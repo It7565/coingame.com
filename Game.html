@@ -1,0 +1,4326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Coin Dash — Online &amp; Local Multiplayer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --page-bg: #f8f9fa;
+      --bg: #202124;
+      --panel: #ffffff;
+      --panel-subtle: #f1f3f4;
+      --panel-border: #dadce0;
+      --text: #202124;
+      --muted: #5f6368;
+      --gold: #f9ab00;
+      --gem: #1a73e8;
+      --accent: #1a73e8;
+      --accent-hover: #1765cc;
+      --accent-soft: #e8f0fe;
+      --p1: #1a73e8;
+      --p2: #d93025;
+      --danger: #d93025;
+      --success: #1e8e3e;
+      --shadow-sm: 0 1px 2px rgba(60, 64, 67, 0.25), 0 1px 3px 1px rgba(60, 64, 67, 0.12);
+      --shadow-md: 0 2px 6px rgba(60, 64, 67, 0.22), 0 4px 12px rgba(60, 64, 67, 0.12);
+      --shadow-lg: 0 4px 16px rgba(60, 64, 67, 0.24), 0 16px 36px rgba(60, 64, 67, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--page-bg);
+      background-image:
+        radial-gradient(at 15% 15%, rgba(66, 133, 244, 0.08) 0px, transparent 50%),
+        radial-gradient(at 85% 20%, rgba(251, 188, 5, 0.08) 0px, transparent 45%),
+        radial-gradient(at 80% 85%, rgba(52, 168, 83, 0.07) 0px, transparent 50%),
+        radial-gradient(at 15% 85%, rgba(234, 67, 53, 0.06) 0px, transparent 45%);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #game-wrapper {
+      position: relative;
+      width: min(95vw, 880px);
+      height: min(90vh, 640px);
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow-lg);
+      background: var(--bg);
+    }
+
+    canvas#gameCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    /* HUD (Floating Material Chips) */
+    #hud {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 5;
+      gap: 10px;
+    }
+
+    .hud-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(218, 220, 224, 0.9);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .pill.hidden {
+      display: none;
+    }
+
+    .coin-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff3b0, #fbbc04 60%, #e37400 100%);
+      box-shadow: 0 0 0 1px rgba(227, 116, 0, 0.35);
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .gem-dot {
+      width: 12px;
+      height: 12px;
+      background: linear-gradient(135deg, #d2e3fc 0%, #4285F4 50%, #174ea6 100%);
+      transform: rotate(45deg);
+      border-radius: 2px;
+      box-shadow: 0 0 0 1px rgba(23, 78, 166, 0.35);
+      display: inline-block;
+      flex-shrink: 0;
+      margin: 0 2px;
+    }
+
+    .icon-btn {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn:hover {
+      background: #f1f3f4;
+      box-shadow: var(--shadow-md);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Power-up indicator bar */
+    #powerup-bar {
+      position: absolute;
+      bottom: 14px;
+      left: 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .pu-badge {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid var(--panel-border);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Overlays (Material 3 Dialogs) */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(32, 33, 36, 0.56);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      padding: 16px;
+      transition: opacity 0.2s ease;
+    }
+
+    .overlay.hidden {
+      display: none;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid #e8eaed;
+      border-radius: 28px;
+      padding: 26px 28px;
+      width: 100%;
+      max-width: 530px;
+      max-height: 94%;
+      overflow-y: auto;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      color: var(--text);
+    }
+
+    .card::-webkit-scrollbar { width: 6px; }
+    .card::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 999px; }
+
+    .shop-card {
+      max-width: 760px;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 26px;
+    }
+
+    h1, h2 {
+      margin: 0 0 6px 0;
+      letter-spacing: -0.02em;
+      font-weight: 700;
+    }
+
+    /* Google 4-color title treatment */
+    .google-title {
+      font-size: 2.15rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .g-blue { color: #4285F4; }
+    .g-red { color: #EA4335; }
+    .g-yellow { color: #FBBC05; }
+    .g-green { color: #34A853; }
+    .g-gray { color: #5f6368; font-weight: 600; }
+
+    p.subtitle {
+      color: var(--muted);
+      margin: 0 0 16px 0;
+      font-size: 0.92rem;
+      line-height: 1.45;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    /* Mode Selector */
+    .mode-selector {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 520px) {
+      .mode-selector {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .mode-btn {
+      background: #ffffff;
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 10px 6px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-family: inherit;
+    }
+
+    .mode-btn strong {
+      color: var(--text);
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+
+    .mode-btn span {
+      font-size: 0.72rem;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    .mode-btn:hover {
+      background: var(--page-bg);
+      border-color: #bdc1c6;
+    }
+
+    .mode-btn.active {
+      border: 2px solid var(--accent);
+      background: var(--accent-soft);
+      color: #1967d2;
+      padding: 9px 5px;
+    }
+
+    .mode-btn.active strong {
+      color: #1967d2;
+    }
+
+    .controls-hint {
+      background: var(--page-bg);
+      border: 1px solid #e8eaed;
+      border-radius: 16px;
+      padding: 11px 14px;
+      margin-bottom: 16px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.55;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    .controls-hint strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Online Lobby Panel */
+    .online-box {
+      background: var(--page-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .online-box.hidden {
+      display: none;
+    }
+
+    .online-submodes {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .online-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 500px) {
+      .online-split {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .online-pane {
+      background: #ffffff;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .online-pane h4 {
+      margin: 0;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .room-code-display {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--accent-soft);
+      border: 1px dashed var(--accent);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: #1967d2;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .code-input {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 8px 11px;
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.98rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .code-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    }
+
+    .online-status {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-align: center;
+      min-height: 18px;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    /* Material Pill Buttons */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 11px 24px;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn:hover:not(:disabled) {
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    .btn:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+
+    .btn-sm {
+      padding: 8px 14px;
+      font-size: 0.8rem;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      box-shadow: 0 1px 3px rgba(26, 115, 232, 0.4), 0 4px 8px rgba(26, 115, 232, 0.2);
+    }
+
+    .btn-gold {
+      background: #fef7e0;
+      color: #b06000;
+      border: 1px solid #fdd663;
+    }
+
+    .btn-gold:hover:not(:disabled) {
+      background: #feefc3;
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      color: var(--accent);
+      border: 1px solid var(--panel-border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--accent-soft);
+      border-color: #d2e3fc;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 16px 0 20px;
+    }
+
+    .stat-box {
+      background: var(--page-bg);
+      border: 1px solid #e8eaed;
+      border-radius: 16px;
+      padding: 12px 8px;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+
+    .stat-val {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--text);
+    }
+
+    /* Shop Grid */
+    .shop-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e8eaed;
+    }
+
+    .shop-wallets {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .player-toggle {
+      display: inline-flex;
+      background: var(--panel-subtle);
+      border: 1px solid var(--panel-border);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 4px;
+    }
+
+    .ptoggle-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s ease;
+    }
+
+    .ptoggle-btn.active-p1 {
+      background: #ffffff;
+      color: var(--p1);
+      box-shadow: 0 1px 2px rgba(60, 64, 67, 0.2);
+    }
+
+    .ptoggle-btn.active-p2 {
+      background: #ffffff;
+      color: var(--p2);
+      box-shadow: 0 1px 2px rgba(60, 64, 67, 0.2);
+    }
+
+    .skin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(154px, 1fr));
+      gap: 12px;
+      overflow-y: auto;
+      padding: 2px 4px 2px 2px;
+      margin-bottom: 16px;
+    }
+
+    .skin-grid::-webkit-scrollbar { width: 6px; }
+    .skin-grid::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 999px; }
+
+    .skin-section-title {
+      grid-column: 1 / -1;
+      text-align: left;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 4px;
+      padding: 4px 2px;
+      border-bottom: 1px solid #f1f3f4;
+    }
+
+    .skin-item {
+      background: #ffffff;
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .skin-item.gem-tier {
+      border-color: #c5d9fb;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+
+    .skin-item.mythic-tier {
+      border-color: #d8b4fe;
+      background: linear-gradient(180deg, #ffffff 0%, #faf5ff 55%, #fffbeb 100%);
+    }
+
+    .skin-item:hover {
+      box-shadow: var(--shadow-sm);
+    }
+
+    .skin-item.equipped {
+      border: 2px solid var(--p1);
+      background: var(--accent-soft);
+    }
+
+    .skin-item.equipped-p2 {
+      border: 2px solid var(--p2);
+      background: #fce8e6;
+    }
+
+    .skin-preview {
+      width: 66px;
+      height: 66px;
+      border-radius: 14px;
+      background: #202124;
+      border: 1px solid #dadce0;
+    }
+
+    .skin-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    .skin-desc {
+      font-size: 0.72rem;
+      color: var(--muted);
+      min-height: 26px;
+      line-height: 1.3;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    .skin-ability {
+      width: 100%;
+      background: rgba(124, 58, 237, 0.08);
+      border: 1px solid rgba(124, 58, 237, 0.22);
+      color: #5b21b6;
+      border-radius: 10px;
+      padding: 5px 7px;
+      font-size: 0.71rem;
+      line-height: 1.3;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    .skin-ability strong {
+      color: #4c1d95;
+      font-weight: 700;
+    }
+
+    .skin-btn {
+      width: 100%;
+      margin-top: auto;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: none;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s ease, filter 0.15s ease;
+    }
+
+    .skin-btn.equip {
+      background: var(--panel-subtle);
+      color: var(--text);
+      border: 1px solid var(--panel-border);
+    }
+    .skin-btn.equip:hover { background: #e8eaed; }
+
+    .skin-btn.equipped-btn {
+      background: #e6f4ea;
+      color: var(--success);
+      border: 1px solid #ceead6;
+      cursor: default;
+    }
+
+    .skin-btn.buy {
+      background: var(--accent);
+      color: #ffffff;
+    }
+    .skin-btn.buy:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+    .skin-btn.buy.buy-gem {
+      background: linear-gradient(135deg, #1a73e8 0%, #6d28d9 100%);
+      color: #ffffff;
+    }
+    .skin-btn.buy.buy-mythic-coin {
+      background: linear-gradient(135deg, #ea8600 0%, #b06000 100%);
+      color: #ffffff;
+    }
+    .skin-btn.buy.buy-mythic-gem {
+      background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+      color: #ffffff;
+    }
+    .skin-btn.buy:hover:not(:disabled) {
+      filter: brightness(1.06);
+    }
+    .skin-btn.buy:disabled {
+      background: #f1f3f4;
+      color: #9aa0a6;
+      border: 1px solid #e8eaed;
+      cursor: not-allowed;
+      filter: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-wrapper">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div class="hud-group">
+        <div class="pill" title="Your Coin Bank">
+          <span class="coin-dot"></span>
+          <span id="hud-coins">0</span>
+        </div>
+        <div class="pill" title="Your Gem Bank">
+          <span class="gem-dot"></span>
+          <span id="hud-gems">0</span>
+        </div>
+        <div class="pill" id="pill-score">
+          <span style="color: var(--muted); font-weight: 500;" id="hud-score-label">Score</span>
+          <span id="hud-score">0</span>
+        </div>
+        <div class="pill" id="pill-best">
+          <span style="color: var(--muted); font-weight: 500;">Best</span>
+          <span id="hud-best">0</span>
+        </div>
+        <div class="pill hidden" id="pill-p1" style="border-color: #aecbfa;">
+          <span style="color: var(--p1);">P1</span>
+          <span id="hud-p1-score">0</span>
+        </div>
+        <div class="pill hidden" id="pill-p2" style="border-color: #f6aea9;">
+          <span style="color: var(--p2);">P2</span>
+          <span id="hud-p2-score">0</span>
+        </div>
+        <div class="pill hidden" id="pill-net" style="border-color: #a8dab5; font-size: 0.78rem;">
+          <span id="hud-net-dot" style="color: var(--success);">●</span>
+          <span id="hud-net-label">Online</span>
+        </div>
+      </div>
+
+      <div class="hud-group">
+        <button class="icon-btn" id="btn-shop-hud" title="Open Skin Shop (S)">
+          🎨 Skins
+        </button>
+        <button class="icon-btn" id="btn-mute" title="Toggle Sound (M)">
+          🔊
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Power-ups & Abilities -->
+    <div id="powerup-bar"></div>
+
+    <!-- Start Overlay -->
+    <div class="overlay" id="start-overlay">
+      <div class="card">
+        <h1 class="google-title" aria-label="Coin Dash">
+          <span><span class="g-blue">C</span><span class="g-red">o</span><span class="g-yellow">i</span><span class="g-green">n</span></span>
+          <span class="g-gray">Dash</span>
+        </h1>
+        <p class="subtitle">Collect coins &amp; gems, dodge hazards, and unlock custom skins &amp; abilities.</p>
+
+        <div class="mode-selector">
+          <button class="mode-btn active" data-mode="1p">
+            <strong>👤 1P Solo</strong>
+            <span>Classic run</span>
+          </button>
+          <button class="mode-btn" data-mode="coop">
+            <strong>🤝 Local Co-op</strong>
+            <span>Same device</span>
+          </button>
+          <button class="mode-btn" data-mode="versus">
+            <strong>⚔️ Local VS</strong>
+            <span>Same device</span>
+          </button>
+          <button class="mode-btn" data-mode="online">
+            <strong>🌐 Online</strong>
+            <span>Room code P2P</span>
+          </button>
+        </div>
+
+        <div class="controls-hint" id="controls-hint-box"></div>
+
+        <!-- Online Lobby -->
+        <div class="online-box hidden" id="online-lobby">
+          <div class="online-submodes">
+            <span style="font-size: 0.82rem; font-weight: 600; color: var(--muted);">Online Match Type:</span>
+            <div class="player-toggle">
+              <button class="ptoggle-btn active-p1" id="online-type-coop">🤝 Co-op</button>
+              <button class="ptoggle-btn" id="online-type-versus">⚔️ Versus</button>
+            </div>
+          </div>
+
+          <div class="online-split">
+            <div class="online-pane">
+              <h4>Create Room (You = P1)</h4>
+              <button class="btn btn-primary btn-sm" id="btn-host-room">Create Room Code</button>
+              <div class="room-code-display hidden" id="host-code-box">
+                <span id="host-code-text">-----</span>
+                <button class="btn btn-secondary btn-sm" id="btn-copy-code" style="padding: 4px 10px; font-size: 0.72rem;">Copy</button>
+              </div>
+            </div>
+
+            <div class="online-pane">
+              <h4>Join Room (You = P2)</h4>
+              <input type="text" maxlength="6" class="code-input" id="join-code-input" placeholder="CODE" />
+              <button class="btn btn-gold btn-sm" id="btn-join-room">Join Friend</button>
+            </div>
+          </div>
+
+          <div class="online-status" id="online-status">Create a room or enter a friend's code to connect.</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-start">▶ Play Game</button>
+          <button class="btn btn-gold" id="btn-open-shop-start">🎨 Skin Shop</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div class="overlay hidden" id="gameover-overlay">
+      <div class="card">
+        <h2 id="go-title" style="font-size: 1.75rem; color: var(--danger);">Game Over</h2>
+        <p class="subtitle" id="new-best-msg" style="display:none; color: #b06000; font-weight: 700;">★ New High Score! ★</p>
+        <p class="subtitle" id="go-sub-msg" style="display:none;"></p>
+        <div class="stats-grid" id="go-stats-grid">
+          <div class="stat-box">
+            <div class="stat-label" id="go-label-1">Score</div>
+            <div class="stat-val" id="go-val-1">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label" id="go-label-2">Earned</div>
+            <div class="stat-val" style="color: var(--gold);" id="go-val-2">+0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label" id="go-label-3">Total Bank</div>
+            <div class="stat-val" id="go-val-3">0</div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-retry">↻ Play Again</button>
+          <button class="btn btn-gold" id="btn-open-shop-go">🎨 Skin Shop</button>
+          <button class="btn btn-secondary" id="btn-main-menu">☰ Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skin Shop Overlay -->
+    <div class="overlay hidden" id="shop-overlay">
+      <div class="card shop-card">
+        <div class="shop-header">
+          <div style="text-align: left;">
+            <h2 style="margin: 0; font-size: 1.35rem;">Skin Shop</h2>
+            <span style="font-size: 0.82rem; color: var(--muted); font-family: 'Roboto', sans-serif;">Coins, Gem Exclusives &amp; Mythic Ability Skins</span>
+          </div>
+          <div class="player-toggle" id="shop-player-toggle">
+            <button class="ptoggle-btn active-p1" id="shop-tab-p1">P1 Skin</button>
+            <button class="ptoggle-btn" id="shop-tab-p2">P2 (Local)</button>
+          </div>
+          <div class="shop-wallets">
+            <div class="pill" style="box-shadow: none; background: var(--page-bg);" title="Coins">
+              <span class="coin-dot"></span>
+              <span id="shop-coins">0</span>
+            </div>
+            <div class="pill" style="box-shadow: none; background: #f3f7fe; border-color: #c5d9fb;" title="Gems">
+              <span class="gem-dot"></span>
+              <span id="shop-gems">0</span>
+            </div>
+          </div>
+        </div>
+        <div class="skin-grid" id="skin-grid"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btn-close-shop">Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // ==========================================
+      // 1. SOUND SYNTHESIZER (Web Audio API)
+      // ==========================================
+      const Sound = (() => {
+        let ctx = null;
+        let muted = false;
+
+        function ensureCtx() {
+          if (!ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) ctx = new AudioCtx();
+          }
+          if (ctx && ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+          }
+        }
+
+        function tone(freq, endFreq, dur, type = 'sine', vol = 0.12) {
+          if (muted) return;
+          ensureCtx();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          if (endFreq !== freq) {
+            osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + dur);
+          }
+          gain.gain.setValueAtTime(vol, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + dur);
+        }
+
+        return {
+          setMuted(m) { muted = m; },
+          isMuted() { return muted; },
+          coin() {
+            tone(880, 1320, 0.09, 'sine', 0.11);
+            setTimeout(() => tone(1320, 1760, 0.1, 'triangle', 0.08), 45);
+          },
+          gem() {
+            tone(740, 1480, 0.12, 'triangle', 0.12);
+            setTimeout(() => tone(1108, 2217, 0.15, 'sine', 0.11), 65);
+          },
+          powerup() {
+            tone(440, 880, 0.16, 'sine', 0.12);
+            setTimeout(() => tone(660, 1320, 0.18, 'triangle', 0.1), 90);
+          },
+          shockwave() {
+            tone(220, 880, 0.22, 'sawtooth', 0.1);
+            setTimeout(() => tone(660, 180, 0.2, 'sine', 0.11), 60);
+          },
+          revive() {
+            tone(523, 784, 0.15, 'sine', 0.13);
+            setTimeout(() => tone(784, 1046, 0.2, 'triangle', 0.12), 80);
+          },
+          shieldBreak() {
+            tone(500, 160, 0.25, 'sawtooth', 0.13);
+          },
+          hit() {
+            tone(240, 55, 0.35, 'sawtooth', 0.16);
+          },
+          unlock() {
+            [523, 659, 784, 1046].forEach((f, i) => {
+              setTimeout(() => tone(f, f * 1.03, 0.14, 'triangle', 0.11), i * 65);
+            });
+          }
+        };
+      })();
+
+      // ==========================================
+      // 2. SKINS CATALOG & CUSTOM RENDERERS
+      // ==========================================
+      const SKINS = [
+        // --- COIN SKINS ---
+        {
+          id: 'classic',
+          name: 'Neon Orb',
+          currency: 'coins',
+          price: 0,
+          desc: 'Sleek blue core with glowing trail.',
+          trailColor: '#4285F4',
+          draw(ctx, x, y, r, t, vx, vy) {
+            const grad = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * 1.3);
+            grad.addColorStop(0, '#d2e3fc');
+            grad.addColorStop(0.55, '#1a73e8');
+            grad.addColorStop(1, 'rgba(26, 115, 232, 0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 1.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#4285F4';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#e8f0fe';
+            ctx.stroke();
+
+            const ex = Math.max(-3, Math.min(3, vx * 0.5));
+            const ey = Math.max(-3, Math.min(3, vy * 0.5));
+            ctx.fillStyle = '#174ea6';
+            ctx.beginPath();
+            ctx.arc(x - r * 0.3 + ex, y - 2 + ey, 2.7, 0, Math.PI * 2);
+            ctx.arc(x + r * 0.3 + ex, y - 2 + ey, 2.7, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        },
+        {
+          id: 'solar',
+          name: 'Solar Flare',
+          currency: 'coins',
+          price: 15,
+          desc: 'Blazing sun with spinning corona.',
+          trailColor: '#FBBC05',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(t * 2.2);
+            ctx.fillStyle = '#f9ab00';
+            for (let i = 0; i < 8; i++) {
+              ctx.rotate(Math.PI / 4);
+              ctx.beginPath();
+              ctx.moveTo(-4, -r * 0.8);
+              ctx.lineTo(0, -r * 1.45);
+              ctx.lineTo(4, -r * 0.8);
+              ctx.closePath();
+              ctx.fill();
+            }
+            ctx.restore();
+
+            const grad = ctx.createRadialGradient(x - 3, y - 3, 2, x, y, r);
+            grad.addColorStop(0, '#fef08a');
+            grad.addColorStop(0.65, '#fbbc04');
+            grad.addColorStop(1, '#ea8600');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#431407';
+            ctx.beginPath();
+            ctx.arc(x - 4.5, y - 1, 2.5, 0, Math.PI * 2);
+            ctx.arc(x + 4.5, y - 1, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        },
+        {
+          id: 'ninja',
+          name: 'Cyber Ninja',
+          currency: 'coins',
+          price: 35,
+          desc: 'Stealth visor & crimson headband.',
+          trailColor: '#EA4335',
+          draw(ctx, x, y, r, t, vx) {
+            const wave = Math.sin(t * 10) * 4;
+            ctx.strokeStyle = '#EA4335';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x - r * 0.6, y - r * 0.4);
+            ctx.quadraticCurveTo(x - r * 1.3, y - r * 0.2 + wave, x - r * 1.7, y + wave);
+            ctx.stroke();
+
+            ctx.fillStyle = '#1e1b4b';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#6366f1';
+            ctx.stroke();
+
+            ctx.fillStyle = '#EA4335';
+            ctx.fillRect(x - r * 0.92, y - r * 0.55, r * 1.84, 5);
+
+            const look = Math.max(-2.5, Math.min(2.5, vx * 0.4));
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(x - r * 0.68, y - 3, r * 1.36, 8);
+            ctx.fillStyle = '#4285F4';
+            ctx.shadowColor = '#4285F4';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(x - 6 + look, y - 1, 4, 4);
+            ctx.fillRect(x + 2 + look, y - 1, 4, 4);
+            ctx.shadowBlur = 0;
+          }
+        },
+        {
+          id: 'slime',
+          name: 'Emerald Slime',
+          currency: 'coins',
+          price: 60,
+          desc: 'Squishy gelatinous cube-blob.',
+          trailColor: '#34A853',
+          draw(ctx, x, y, r, t) {
+            const squash = Math.sin(t * 7) * 2.2;
+            const rx = r + squash;
+            const ry = r - squash * 0.8;
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = 'rgba(52, 168, 83, 0.88)';
+            ctx.strokeStyle = '#a8dab5';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.beginPath();
+            ctx.ellipse(-rx * 0.35, -ry * 0.38, 4, 2.5, -0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#0d652d';
+            ctx.beginPath();
+            ctx.arc(-5, -1, 2.8, 0, Math.PI * 2);
+            ctx.arc(5, -1, 2.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'royal',
+          name: 'Royal Crown',
+          currency: 'coins',
+          price: 100,
+          desc: 'Majestic golden orb with a crown.',
+          trailColor: '#FBBC05',
+          draw(ctx, x, y, r, t) {
+            const grad = ctx.createRadialGradient(x - 4, y - 4, 2, x, y, r);
+            grad.addColorStop(0, '#fef9c3');
+            grad.addColorStop(0.6, '#fbbc04');
+            grad.addColorStop(1, '#b06000');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            const bob = Math.sin(t * 5) * 1.5;
+            ctx.fillStyle = '#fde047';
+            ctx.strokeStyle = '#854d0e';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(x - 10, y - r + 2 + bob);
+            ctx.lineTo(x - 12, y - r - 9 + bob);
+            ctx.lineTo(x - 4, y - r - 3 + bob);
+            ctx.lineTo(x, y - r - 11 + bob);
+            ctx.lineTo(x + 4, y - r - 3 + bob);
+            ctx.lineTo(x + 12, y - r - 9 + bob);
+            ctx.lineTo(x + 10, y - r + 2 + bob);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ea4335';
+            ctx.beginPath();
+            ctx.arc(x, y - r - 2 + bob, 2.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#422006';
+            ctx.beginPath();
+            ctx.arc(x - 4.5, y + 1, 2.5, 0, Math.PI * 2);
+            ctx.arc(x + 4.5, y + 1, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        },
+        {
+          id: 'mecha',
+          name: 'Mecha Bot',
+          currency: 'coins',
+          price: 150,
+          desc: 'Armored drone with LED scanner.',
+          trailColor: '#9aa0a6',
+          draw(ctx, x, y, r, t) {
+            ctx.strokeStyle = '#dadce0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y - r);
+            ctx.lineTo(x, y - r - 7);
+            ctx.stroke();
+            ctx.fillStyle = Math.sin(t * 8) > 0 ? '#ea4335' : '#8c1d18';
+            ctx.beginPath();
+            ctx.arc(x, y - r - 8, 2.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#5f6368';
+            ctx.strokeStyle = '#e8eaed';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(x - r, y - r * 0.9, r * 2, r * 1.8, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#202124';
+            ctx.fillRect(x - r * 0.72, y - 5, r * 1.44, 10);
+
+            const scan = Math.sin(t * 6) * (r * 0.4);
+            ctx.fillStyle = '#4285F4';
+            ctx.shadowColor = '#4285F4';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(x + scan, y, 3.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+        },
+        {
+          id: 'phantom',
+          name: 'Phantom Ghost',
+          currency: 'coins',
+          price: 220,
+          desc: 'Spooky spectral spirit from beyond.',
+          trailColor: '#c084fc',
+          draw(ctx, x, y, r, t) {
+            const floatY = y + Math.sin(t * 5) * 2.5;
+            ctx.save();
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = '#d8b4fe';
+            ctx.beginPath();
+            ctx.arc(x, floatY - 2, r * 0.95, Math.PI, 0);
+            ctx.lineTo(x + r * 0.95, floatY + r * 0.85);
+            for (let i = 3; i >= -3; i--) {
+              const wx = x + (i / 3) * r * 0.95;
+              const wy = floatY + r * 0.85 + Math.sin(t * 8 + i) * 3;
+              ctx.lineTo(wx, wy);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#3b0764';
+            ctx.beginPath();
+            ctx.ellipse(x - 4.5, floatY - 2, 2.8, 3.8, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + 4.5, floatY - 2, 2.8, 3.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'cosmic',
+          name: 'Cosmic Galaxy',
+          currency: 'coins',
+          price: 350,
+          desc: 'Nebula core with orbiting stars!',
+          trailColor: 'rainbow',
+          draw(ctx, x, y, r, t) {
+            const hue = (t * 60) % 360;
+            const grad = ctx.createRadialGradient(x, y, 2, x, y, r * 1.35);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.45, `hsl(${hue}, 90%, 60%)`);
+            grad.addColorStop(0.85, `hsl(${(hue + 80) % 360}, 85%, 40%)`);
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 1.35, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#0f0728';
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.82, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = `hsl(${hue}, 100%, 75%)`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            for (let i = 0; i < 3; i++) {
+              const ang = t * 3.5 + (i * Math.PI * 2) / 3;
+              const ox = x + Math.cos(ang) * (r * 1.25);
+              const oy = y + Math.sin(ang) * (r * 1.25);
+              ctx.fillStyle = `hsl(${(hue + i * 110) % 360}, 100%, 75%)`;
+              ctx.beginPath();
+              ctx.arc(ox, oy, 3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(x - 4, y - 1, 2.2, 0, Math.PI * 2);
+            ctx.arc(x + 4, y - 1, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        },
+
+        // --- GEM EXCLUSIVE SKINS ---
+        {
+          id: 'crystal',
+          name: 'Crystal Golem',
+          currency: 'gems',
+          price: 3,
+          desc: 'Faceted sapphire core with orbiting shards.',
+          trailColor: '#38bdf8',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 12;
+
+            for (let i = 0; i < 3; i++) {
+              const ang = t * 2.6 + (i * Math.PI * 2) / 3;
+              const sx = x + Math.cos(ang) * (r * 1.32);
+              const sy = y + Math.sin(ang) * (r * 1.32);
+              ctx.save();
+              ctx.translate(sx, sy);
+              ctx.rotate(ang + Math.PI / 2);
+              ctx.fillStyle = '#bae6fd';
+              ctx.beginPath();
+              ctx.moveTo(0, -4.5);
+              ctx.lineTo(3, 0);
+              ctx.lineTo(0, 4.5);
+              ctx.lineTo(-3, 0);
+              ctx.closePath();
+              ctx.fill();
+              ctx.restore();
+            }
+
+            ctx.fillStyle = '#0284c7';
+            ctx.strokeStyle = '#e0f2fe';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const a = (i * Math.PI) / 3 + Math.PI / 6;
+              const px = x + Math.cos(a) * r;
+              const py = y + Math.sin(a) * r;
+              if (i === 0) ctx.moveTo(px, py);
+              else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(186, 230, 253, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(x, y - r * 0.85);
+            ctx.lineTo(x + r * 0.55, y - r * 0.25);
+            ctx.lineTo(x, y + r * 0.2);
+            ctx.lineTo(x - r * 0.55, y - r * 0.25);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(x - 4.5, y + 1, 2.3, 0, Math.PI * 2);
+            ctx.arc(x + 4.5, y + 1, 2.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'inferno',
+          name: 'Inferno Demon',
+          currency: 'gems',
+          price: 5,
+          desc: 'Flickering magma core with horns & ember eyes.',
+          trailColor: '#f97316',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            for (let i = 0; i < 6; i++) {
+              const ang = (i * Math.PI) / 3 + t * 2.5;
+              const flicker = Math.sin(t * 14 + i * 2) * 2.5;
+              const fx = x + Math.cos(ang) * (r * 0.9 + flicker);
+              const fy = y + Math.sin(ang) * (r * 0.9 + flicker);
+              ctx.fillStyle = i % 2 === 0 ? 'rgba(249, 115, 22, 0.7)' : 'rgba(239, 68, 68, 0.7)';
+              ctx.beginPath();
+              ctx.arc(fx, fy, 5.5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            ctx.fillStyle = '#450a0a';
+            ctx.strokeStyle = '#fca5a5';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(x - 10, y - r * 0.55);
+            ctx.quadraticCurveTo(x - 16, y - r * 1.45, x - 6, y - r * 1.25);
+            ctx.lineTo(x - 4, y - r * 0.75);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(x + 10, y - r * 0.55);
+            ctx.quadraticCurveTo(x + 16, y - r * 1.45, x + 6, y - r * 1.25);
+            ctx.lineTo(x + 4, y - r * 0.75);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            const grad = ctx.createRadialGradient(x, y, 2, x, y, r);
+            grad.addColorStop(0, '#fef08a');
+            grad.addColorStop(0.5, '#ea580c');
+            grad.addColorStop(1, '#7f1d1d');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#fef08a';
+            ctx.shadowColor = '#facc15';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(x - 7, y - 3);
+            ctx.lineTo(x - 2, y);
+            ctx.lineTo(x - 6, y + 2);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(x + 7, y - 3);
+            ctx.lineTo(x + 2, y);
+            ctx.lineTo(x + 6, y + 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'frost',
+          name: 'Frost Spirit',
+          currency: 'gems',
+          price: 8,
+          desc: 'Crystalline snowflake halo and icy mist.',
+          trailColor: '#a5f3fc',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(t * 1.4);
+            ctx.strokeStyle = 'rgba(165, 243, 252, 0.85)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 6; i++) {
+              ctx.rotate(Math.PI / 3);
+              ctx.beginPath();
+              ctx.moveTo(0, -r * 0.7);
+              ctx.lineTo(0, -r * 1.42);
+              ctx.moveTo(-3.5, -r * 1.15);
+              ctx.lineTo(0, -r * 1.32);
+              ctx.lineTo(3.5, -r * 1.15);
+              ctx.stroke();
+            }
+            ctx.restore();
+
+            const grad = ctx.createRadialGradient(x - 3, y - 3, 2, x, y, r);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.55, '#67e8f9');
+            grad.addColorStop(1, '#0891b2');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.94, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ecfeff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#0e7490';
+            ctx.beginPath();
+            ctx.arc(x - 4.5, y - 1, 2.5, 0, Math.PI * 2);
+            ctx.arc(x + 4.5, y - 1, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'volt',
+          name: 'Volt Striker',
+          currency: 'gems',
+          price: 12,
+          desc: 'Crackling high-voltage plasma core.',
+          trailColor: '#fde047',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            ctx.shadowColor = '#facc15';
+            ctx.shadowBlur = 12;
+
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 1.8;
+            for (let i = 0; i < 4; i++) {
+              const ang = t * 5 + (i * Math.PI) / 2;
+              const r1 = r * 0.9;
+              const r2 = r * 1.38;
+              const midAng = ang + Math.sin(t * 25 + i * 7) * 0.25;
+              ctx.beginPath();
+              ctx.moveTo(x + Math.cos(ang) * r1, y + Math.sin(ang) * r1);
+              ctx.lineTo(x + Math.cos(midAng) * ((r1 + r2) * 0.52), y + Math.sin(midAng) * ((r1 + r2) * 0.52));
+              ctx.lineTo(x + Math.cos(ang + 0.12) * r2, y + Math.sin(ang + 0.12) * r2);
+              ctx.stroke();
+            }
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 2.4;
+            ctx.stroke();
+
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath();
+            ctx.moveTo(x + 2, y - 9);
+            ctx.lineTo(x - 6, y + 1);
+            ctx.lineTo(x, y + 1);
+            ctx.lineTo(x - 3, y + 9);
+            ctx.lineTo(x + 6, y - 1);
+            ctx.lineTo(x, y - 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'dragon',
+          name: 'Shadow Dragon',
+          currency: 'gems',
+          price: 16,
+          desc: 'Flapping obsidian wings and fiery glare.',
+          trailColor: '#ef4444',
+          draw(ctx, x, y, r, t) {
+            const flap = Math.sin(t * 9) * 5;
+            ctx.save();
+            ctx.fillStyle = '#7f1d1d';
+            ctx.strokeStyle = '#f87171';
+            ctx.lineWidth = 1.5;
+
+            ctx.beginPath();
+            ctx.moveTo(x - r * 0.7, y);
+            ctx.lineTo(x - r * 1.65, y - 8 + flap);
+            ctx.lineTo(x - r * 1.35, y + 7 + flap * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(x + r * 0.7, y);
+            ctx.lineTo(x + r * 1.65, y - 8 + flap);
+            ctx.lineTo(x + r * 1.35, y + 7 + flap * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.moveTo(x - 8, y - r * 0.7);
+            ctx.lineTo(x - 13, y - r * 1.45);
+            ctx.lineTo(x - 3, y - r * 0.9);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(x + 8, y - r * 0.7);
+            ctx.lineTo(x + 13, y - r * 1.45);
+            ctx.lineTo(x + 3, y - r * 0.9);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = '#18181b';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.shadowColor = '#f59e0b';
+            ctx.shadowBlur = 7;
+            ctx.beginPath();
+            ctx.ellipse(x - 4.8, y - 1, 3, 2, 0.25, 0, Math.PI * 2);
+            ctx.ellipse(x + 4.8, y - 1, 3, 2, -0.25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'sakura',
+          name: 'Sakura Blossom',
+          currency: 'gems',
+          price: 20,
+          desc: 'Serene spirit with orbiting cherry petals.',
+          trailColor: '#f472b6',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            for (let i = 0; i < 5; i++) {
+              const ang = t * 2 + (i * Math.PI * 2) / 5;
+              const px = x + Math.cos(ang) * (r * 1.32);
+              const py = y + Math.sin(ang) * (r * 1.32);
+              ctx.save();
+              ctx.translate(px, py);
+              ctx.rotate(ang + t * 2);
+              ctx.fillStyle = i % 2 === 0 ? '#fbcfe8' : '#f472b6';
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 4.5, 2.5, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+
+            const grad = ctx.createRadialGradient(x - 3, y - 3, 2, x, y, r);
+            grad.addColorStop(0, '#fdf2f8');
+            grad.addColorStop(0.65, '#f472b6');
+            grad.addColorStop(1, '#db2777');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fce7f3';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.strokeStyle = '#831843';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(x - 5, y - 1, 2.6, Math.PI, 0);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(x + 5, y - 1, 2.6, Math.PI, 0);
+            ctx.stroke();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'blackhole',
+          name: 'The Horizon',
+          currency: 'gems',
+          price: 25,
+          desc: 'Gravitational singularity with accretion disk.',
+          trailColor: '#a855f7',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(0.45);
+            ctx.strokeStyle = '#c084fc';
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = 12;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, r * 1.5, r * 0.52, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, r * 1.25, r * 0.4, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.shadowColor = '#9333ea';
+            ctx.shadowBlur = 16;
+            ctx.fillStyle = '#030712';
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.85, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#e9d5ff';
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+
+            for (let i = 0; i < 4; i++) {
+              const ang = -t * 4 + (i * Math.PI) / 2;
+              const sx = x + Math.cos(ang) * (r * 1.15);
+              const sy = y + Math.sin(ang) * (r * 0.45);
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(sx, sy, 1.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+        },
+        {
+          id: 'phoenix',
+          name: 'Prismatic Phoenix',
+          currency: 'gems',
+          price: 35,
+          desc: 'Mythic rainbow wings with radiant crest!',
+          trailColor: 'rainbow',
+          draw(ctx, x, y, r, t) {
+            const hue = (t * 95) % 360;
+            const flap = Math.sin(t * 10) * 4;
+            ctx.save();
+
+            ctx.shadowColor = `hsl(${hue}, 100%, 65%)`;
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = `hsl(${(hue + 40) % 360}, 95%, 60%)`;
+            ctx.beginPath();
+            ctx.moveTo(x - r * 0.6, y - 2);
+            ctx.quadraticCurveTo(x - r * 1.7, y - 12 + flap, x - r * 1.45, y + 6 + flap);
+            ctx.lineTo(x - r * 0.6, y + 5);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(x + r * 0.6, y - 2);
+            ctx.quadraticCurveTo(x + r * 1.7, y - 12 + flap, x + r * 1.45, y + 6 + flap);
+            ctx.lineTo(x + r * 0.6, y + 5);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = `hsl(${(hue + 300) % 360}, 100%, 68%)`;
+            ctx.beginPath();
+            ctx.moveTo(x - 5, y - r * 0.8);
+            ctx.lineTo(x, y - r * 1.55);
+            ctx.lineTo(x + 5, y - r * 0.8);
+            ctx.closePath();
+            ctx.fill();
+
+            const grad = ctx.createRadialGradient(x, y, 2, x, y, r);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.55, `hsl(${hue}, 95%, 62%)`);
+            grad.addColorStop(1, `hsl(${(hue + 60) % 360}, 90%, 45%)`);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.92, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#1e1b4b';
+            ctx.beginPath();
+            ctx.arc(x - 4.2, y - 1, 2.3, 0, Math.PI * 2);
+            ctx.arc(x + 4.2, y - 1, 2.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+
+        // --- MYTHIC ABILITY SKINS (EXPENSIVE) ---
+        {
+          id: 'viper',
+          name: 'Cyber Viper',
+          currency: 'coins',
+          price: 600,
+          desc: 'Venomous hyper-speed serpent orb.',
+          ability: {
+            id: 'speed',
+            name: 'Turbo Reflex',
+            desc: '+25% movement speed & sleeker hitbox.'
+          },
+          trailColor: '#22c55e',
+          draw(ctx, x, y, r, t, vx) {
+            ctx.save();
+            const rr = Math.max(12, r);
+            // Slithering venom tail
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            for (let i = 0; i <= 4; i++) {
+              const sx = x - rr * (0.7 + i * 0.28);
+              const sy = y + Math.sin(t * 14 + i * 1.1) * 4;
+              if (i === 0) ctx.moveTo(x - rr * 0.5, y);
+              ctx.lineTo(sx, sy);
+            }
+            ctx.stroke();
+
+            ctx.shadowColor = '#22c55e';
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = '#052e16';
+            ctx.beginPath();
+            ctx.arc(x, y, rr, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#4ade80';
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Fangs
+            ctx.fillStyle = '#f0fdf4';
+            ctx.beginPath();
+            ctx.moveTo(x - 5, y + 4);
+            ctx.lineTo(x - 3.5, y + 9);
+            ctx.lineTo(x - 2, y + 4);
+            ctx.moveTo(x + 2, y + 4);
+            ctx.lineTo(x + 3.5, y + 9);
+            ctx.lineTo(x + 5, y + 4);
+            ctx.fill();
+
+            // Slit neon eyes
+            const look = Math.max(-2, Math.min(2, vx * 0.35));
+            ctx.fillStyle = '#86efac';
+            ctx.beginPath();
+            ctx.ellipse(x - 4.5 + look, y - 2, 3, 1.8, 0.25, 0, Math.PI * 2);
+            ctx.ellipse(x + 4.5 + look, y - 2, 3, 1.8, -0.25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'midas',
+          name: 'Golden Midas',
+          currency: 'coins',
+          price: 1000,
+          desc: 'Blessed relic forged from pure gold.',
+          ability: {
+            id: 'midas',
+            name: 'Midas Touch',
+            desc: '+50% coin points & +1 extra coin every 3rd coin.'
+          },
+          trailColor: '#fbbf24',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            // Orbiting mini coins
+            for (let i = 0; i < 3; i++) {
+              const ang = t * 2.8 + (i * Math.PI * 2) / 3;
+              const cx = x + Math.cos(ang) * (r * 1.35);
+              const cy = y + Math.sin(ang) * (r * 1.35);
+              ctx.fillStyle = '#fde047';
+              ctx.strokeStyle = '#b45309';
+              ctx.lineWidth = 1.2;
+              ctx.beginPath();
+              ctx.arc(cx, cy, 3.3, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+            }
+
+            ctx.shadowColor = '#f59e0b';
+            ctx.shadowBlur = 14;
+            const grad = ctx.createRadialGradient(x - 4, y - 4, 2, x, y, r);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.45, '#fde047');
+            grad.addColorStop(0.85, '#d97706');
+            grad.addColorStop(1, '#78350f');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Golden laurel / gem on forehead
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath();
+            ctx.arc(x - 4.5, y, 2.5, 0, Math.PI * 2);
+            ctx.arc(x + 4.5, y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(x, y - r * 0.72);
+            ctx.lineTo(x + 3.5, y - r * 0.35);
+            ctx.lineTo(x, y - r * 0.05);
+            ctx.lineTo(x - 3.5, y - r * 0.35);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'titan',
+          name: 'Aegis Titan',
+          currency: 'gems',
+          price: 45,
+          desc: 'Armored celestial sentinel with barrier plates.',
+          ability: {
+            id: 'aegis',
+            name: 'Auto-Aegis',
+            desc: 'Starts shielded & regens a Shield every 18s.'
+          },
+          trailColor: '#60a5fa',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            // Rotating barrier shields
+            ctx.strokeStyle = '#93c5fd';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            for (let i = 0; i < 3; i++) {
+              const a = t * 1.8 + (i * Math.PI * 2) / 3;
+              ctx.beginPath();
+              ctx.arc(x, y, r * 1.28, a - 0.38, a + 0.38);
+              ctx.stroke();
+            }
+
+            ctx.fillStyle = '#1e3a8a';
+            ctx.strokeStyle = '#bfdbfe';
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.95, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Armored T-visor
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(x - r * 0.65, y - 4, r * 1.3, 6);
+            ctx.fillRect(x - 2.5, y - 4, 5, 11);
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(x - r * 0.52, y - 2, r * 1.04, 2.5);
+            ctx.restore();
+          }
+        },
+        {
+          id: 'gravity',
+          name: 'Gravity Weaver',
+          currency: 'gems',
+          price: 65,
+          desc: 'Cosmic attractor bending space around you.',
+          ability: {
+            id: 'magnet',
+            name: 'Gravity Aura',
+            desc: 'Always pulls coins within 135px (280px w/ Magnet).'
+          },
+          trailColor: '#e879f9',
+          draw(ctx, x, y, r, t) {
+            ctx.save();
+            // Pulsing gravity rings
+            const p1 = ((t * 1.3) % 1);
+            ctx.strokeStyle = `rgba(232, 121, 249, ${(1 - p1) * 0.7})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, r * (0.9 + p1 * 0.7), 0, Math.PI * 2);
+            ctx.stroke();
+
+            const grad = ctx.createRadialGradient(x, y, 2, x, y, r);
+            grad.addColorStop(0, '#fae8ff');
+            grad.addColorStop(0.5, '#a21caf');
+            grad.addColorStop(1, '#3b0764');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#f0abfc';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Glowing star eyes
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#f0abfc';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(x - 4.5, y - 1, 2.6, 0, Math.PI * 2);
+            ctx.arc(x + 4.5, y - 1, 2.6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'valkyrie',
+          name: 'Storm Valkyrie',
+          currency: 'gems',
+          price: 90,
+          desc: 'Tempest angel armed with electric wings.',
+          ability: {
+            id: 'shockwave',
+            name: 'Shockwave Burst',
+            desc: 'Every 10s blasts nearby hazards (+40 pts each).'
+          },
+          trailColor: '#22d3ee',
+          draw(ctx, x, y, r, t) {
+            const flap = Math.sin(t * 8) * 4;
+            ctx.save();
+            ctx.shadowColor = '#22d3ee';
+            ctx.shadowBlur = 10;
+
+            // Angelic cyber wings
+            ctx.fillStyle = '#cffafe';
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x - r * 0.65, y);
+            ctx.lineTo(x - r * 1.7, y - 11 + flap);
+            ctx.lineTo(x - r * 1.35, y + 6 + flap * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(x + r * 0.65, y);
+            ctx.lineTo(x + r * 1.7, y - 11 + flap);
+            ctx.lineTo(x + r * 1.35, y + 6 + flap * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Halo
+            ctx.strokeStyle = '#67e8f9';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.ellipse(x, y - r - 4, 9, 3, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Core
+            const grad = ctx.createRadialGradient(x, y, 2, x, y, r);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.6, '#22d3ee');
+            grad.addColorStop(1, '#0e7490');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.94, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#083344';
+            ctx.beginPath();
+            ctx.arc(x - 4.2, y - 1, 2.3, 0, Math.PI * 2);
+            ctx.arc(x + 4.2, y - 1, 2.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        },
+        {
+          id: 'sovereign',
+          name: 'Celestial Sovereign',
+          currency: 'gems',
+          price: 125,
+          desc: 'Supreme deity of the arena. Ultimate power!',
+          ability: {
+            id: 'sovereign',
+            name: 'Sovereign Blessing',
+            desc: 'Start Shield + 18% Speed + Mini-Magnet + 2x Gems!'
+          },
+          trailColor: 'rainbow',
+          draw(ctx, x, y, r, t) {
+            const hue = (t * 80) % 360;
+            ctx.save();
+            // Spinning sacred geometry diamond ring
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(t * 1.6);
+            ctx.strokeStyle = `hsl(${hue}, 100%, 72%)`;
+            ctx.shadowColor = `hsl(${hue}, 100%, 65%)`;
+            ctx.shadowBlur = 14;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-r * 1.08, -r * 1.08, r * 2.16, r * 2.16);
+            ctx.rotate(Math.PI / 4);
+            ctx.strokeStyle = '#fde047';
+            ctx.strokeRect(-r * 1.08, -r * 1.08, r * 2.16, r * 2.16);
+            ctx.restore();
+
+            // 4 prism orbiters
+            for (let i = 0; i < 4; i++) {
+              const ang = -t * 3 + (i * Math.PI) / 2;
+              const ox = x + Math.cos(ang) * (r * 1.48);
+              const oy = y + Math.sin(ang) * (r * 1.48);
+              ctx.fillStyle = `hsl(${(hue + i * 90) % 360}, 100%, 75%)`;
+              ctx.beginPath();
+              ctx.arc(ox, oy, 2.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            // Radiant white-gold core
+            const grad = ctx.createRadialGradient(x, y, 2, x, y, r);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.55, '#fef08a');
+            grad.addColorStop(1, `hsl(${hue}, 95%, 55%)`);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#312e81';
+            ctx.beginPath();
+            ctx.arc(x - 4.2, y, 2.4, 0, Math.PI * 2);
+            ctx.arc(x + 4.2, y, 2.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      ];
+
+      // ==========================================
+      // 3. PERSISTENT SAVE DATA
+      // ==========================================
+      const STORAGE_KEY = 'coin_dash_save_v1';
+      let saveData = {
+        coins: 0,
+        gems: 0,
+        bestScore: 0,
+        bestCoopScore: 0,
+        unlocked: ['classic'],
+        equipped: 'classic',
+        equippedP2: 'classic'
+      };
+
+      function loadSave() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed.coins === 'number') saveData.coins = parsed.coins;
+            if (typeof parsed.gems === 'number') saveData.gems = parsed.gems;
+            if (typeof parsed.bestScore === 'number') saveData.bestScore = parsed.bestScore;
+            if (typeof parsed.bestCoopScore === 'number') saveData.bestCoopScore = parsed.bestCoopScore;
+            if (Array.isArray(parsed.unlocked)) saveData.unlocked = parsed.unlocked;
+            if (typeof parsed.equipped === 'string') saveData.equipped = parsed.equipped;
+            if (typeof parsed.equippedP2 === 'string') saveData.equippedP2 = parsed.equippedP2;
+          }
+        } catch (e) {}
+        if (!saveData.unlocked.includes('classic')) saveData.unlocked.push('classic');
+      }
+
+      function writeSave() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+        } catch (e) {}
+      }
+
+      function getSkinById(id) {
+        return SKINS.find(s => s.id === id) || SKINS[0];
+      }
+
+      // ==========================================
+      // 4. DOM & CANVAS SETUP
+      // ==========================================
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const wrapper = document.getElementById('game-wrapper');
+
+      const hudCoins = document.getElementById('hud-coins');
+      const hudGems = document.getElementById('hud-gems');
+      const hudScore = document.getElementById('hud-score');
+      const hudScoreLabel = document.getElementById('hud-score-label');
+      const hudBest = document.getElementById('hud-best');
+      const pillScore = document.getElementById('pill-score');
+      const pillBest = document.getElementById('pill-best');
+      const pillP1 = document.getElementById('pill-p1');
+      const pillP2 = document.getElementById('pill-p2');
+      const pillNet = document.getElementById('pill-net');
+      const hudNetLabel = document.getElementById('hud-net-label');
+      const hudNetDot = document.getElementById('hud-net-dot');
+      const hudP1Score = document.getElementById('hud-p1-score');
+      const hudP2Score = document.getElementById('hud-p2-score');
+      const shopCoins = document.getElementById('shop-coins');
+      const shopGems = document.getElementById('shop-gems');
+      const powerupBar = document.getElementById('powerup-bar');
+
+      const startOverlay = document.getElementById('start-overlay');
+      const gameoverOverlay = document.getElementById('gameover-overlay');
+      const shopOverlay = document.getElementById('shop-overlay');
+      const controlsHintBox = document.getElementById('controls-hint-box');
+      const onlineLobby = document.getElementById('online-lobby');
+      const onlineStatusEl = document.getElementById('online-status');
+      const btnStart = document.getElementById('btn-start');
+      const btnRetry = document.getElementById('btn-retry');
+
+      let W = 800;
+      let H = 560;
+      const ONLINE_ARENA_W = 820;
+      const ONLINE_ARENA_H = 560;
+
+      function getArenaTransform() {
+        if (gameMode !== 'online') {
+          return { aw: W, ah: H, scale: 1, ox: 0, oy: 0 };
+        }
+        const scale = Math.min(W / ONLINE_ARENA_W, H / ONLINE_ARENA_H);
+        const ox = (W - ONLINE_ARENA_W * scale) / 2;
+        const oy = (H - ONLINE_ARENA_H * scale) / 2;
+        return { aw: ONLINE_ARENA_W, ah: ONLINE_ARENA_H, scale, ox, oy };
+      }
+
+      function toArenaCoords(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const cx = clientX - rect.left;
+        const cy = clientY - rect.top;
+        const { scale, ox, oy } = getArenaTransform();
+        return { x: (cx - ox) / scale, y: (cy - oy) / scale };
+      }
+
+      function resizeCanvas() {
+        const rect = wrapper.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        W = rect.width;
+        H = rect.height;
+        canvas.width = Math.floor(W * dpr);
+        canvas.height = Math.floor(H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      // ==========================================
+      // 5. GAME STATE & ENTITIES
+      // ==========================================
+      let state = 'menu'; // 'menu' | 'playing' | 'gameover'
+      let gameMode = '1p'; // '1p' | 'coop' | 'versus' | 'online'
+      let onlineSubMode = 'coop'; // 'coop' | 'versus'
+      let shopTargetPlayer = 1; // 1 | 2
+      let returnOverlayAfterShop = 'menu';
+
+      const keys = {};
+      let mouseActive = false;
+      let mouseX = 0;
+      let mouseY = 0;
+      const touchZones = { p1: null, p2: null };
+
+      let players = [];
+      let coins = [];
+      let hazards = [];
+      let powerups = [];
+      let particles = [];
+      let floatingTexts = [];
+      let shockwaves = [];
+      let trail = [];
+
+      let nextUid = 1;
+      let teamScore = 0;
+      let teamCoins = 0;
+      let teamGems = 0;
+      let elapsed = 0;
+      let coinSpawnTimer = 0;
+      let hazardSpawnTimer = 0;
+      let powerupSpawnTimer = 7;
+      let shakeTimer = 0;
+
+      const GOOGLE_DOT_COLORS = [
+        'rgba(66, 133, 244, 0.25)',
+        'rgba(234, 67, 53, 0.22)',
+        'rgba(251, 188, 5, 0.25)',
+        'rgba(52, 168, 83, 0.22)',
+        'rgba(255, 255, 255, 0.16)'
+      ];
+      const bgStars = Array.from({ length: 45 }, (_, i) => ({
+        x: Math.random(),
+        y: Math.random(),
+        size: Math.random() * 2 + 0.7,
+        color: GOOGLE_DOT_COLORS[i % GOOGLE_DOT_COLORS.length]
+      }));
+
+      // ==========================================
+      // 6. ONLINE MULTIPLAYER (PeerJS WebRTC)
+      // ==========================================
+      const PEER_PREFIX = 'cdash-v1-';
+      const Net = {
+        peer: null,
+        conn: null,
+        role: null, // 'host' | 'guest'
+        connected: false,
+        roomCode: '',
+        remoteSkinId: 'classic',
+        remoteInput: { dx: 0, dy: 0, mag: 0 },
+        pendingEvents: [],
+        syncTimer: 0,
+        inputTimer: 0,
+        lastGuestBankCoins: 0,
+        lastGuestBankGems: 0
+      };
+
+      function setOnlineStatus(msg, color = 'var(--muted)') {
+        onlineStatusEl.textContent = msg;
+        onlineStatusEl.style.color = color;
+      }
+
+      function generateRoomCode() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let i = 0; i < 5; i++) {
+          code += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return code;
+      }
+
+      function cleanupNetwork(silent = false) {
+        if (Net.conn) {
+          try { Net.conn.close(); } catch (e) {}
+          Net.conn = null;
+        }
+        if (Net.peer) {
+          try { Net.peer.destroy(); } catch (e) {}
+          Net.peer = null;
+        }
+        Net.role = null;
+        Net.connected = false;
+        Net.roomCode = '';
+        Net.remoteInput = { dx: 0, dy: 0, mag: 0 };
+        Net.pendingEvents = [];
+        document.getElementById('host-code-box').classList.add('hidden');
+        if (!silent) {
+          setOnlineStatus('Create a room or enter a friend\'s code to connect.');
+        }
+        updateStartButtonState();
+        updateHUD();
+      }
+
+      function sendNet(payload) {
+        if (Net.conn && Net.connected && Net.conn.open) {
+          try { Net.conn.send(payload); } catch (e) {}
+        }
+      }
+
+      function hostRoom() {
+        if (typeof Peer === 'undefined') {
+          setOnlineStatus('PeerJS failed to load. Check internet connection.', 'var(--danger)');
+          return;
+        }
+        cleanupNetwork(true);
+        Net.role = 'host';
+        const code = generateRoomCode();
+        Net.roomCode = code;
+        setOnlineStatus('Creating room...', 'var(--accent)');
+
+        const peer = new Peer(PEER_PREFIX + code, {
+          debug: 0,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+          }
+        });
+        Net.peer = peer;
+
+        peer.on('open', () => {
+          document.getElementById('host-code-text').textContent = code;
+          document.getElementById('host-code-box').classList.remove('hidden');
+          setOnlineStatus(`Room ${code} ready! Waiting for friend to join...`, '#b06000');
+        });
+
+        peer.on('connection', (conn) => {
+          if (Net.conn && Net.connected) {
+            conn.close();
+            return;
+          }
+          Net.conn = conn;
+          setupConnectionHandlers(conn);
+        });
+
+        peer.on('error', (err) => {
+          if (err.type === 'unavailable-id') {
+            hostRoom();
+          } else {
+            setOnlineStatus(`Connection error: ${err.type || err.message}`, 'var(--danger)');
+          }
+        });
+      }
+
+      function joinRoom() {
+        if (typeof Peer === 'undefined') {
+          setOnlineStatus('PeerJS failed to load. Check internet connection.', 'var(--danger)');
+          return;
+        }
+        const rawCode = document.getElementById('join-code-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (rawCode.length < 4) {
+          setOnlineStatus('Enter a valid room code from your friend.', 'var(--danger)');
+          return;
+        }
+
+        cleanupNetwork(true);
+        Net.role = 'guest';
+        Net.roomCode = rawCode;
+        setOnlineStatus(`Connecting to room ${rawCode}...`, 'var(--accent)');
+
+        const peer = new Peer({
+          debug: 0,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+          }
+        });
+        Net.peer = peer;
+
+        peer.on('open', () => {
+          const conn = peer.connect(PEER_PREFIX + rawCode, { reliable: true });
+          Net.conn = conn;
+          setupConnectionHandlers(conn);
+        });
+
+        peer.on('error', (err) => {
+          setOnlineStatus(`Could not join (${err.type || 'network error'}). Check the code.`, 'var(--danger)');
+          Net.connected = false;
+          updateStartButtonState();
+        });
+      }
+
+      function setupConnectionHandlers(conn) {
+        conn.on('open', () => {
+          Net.connected = true;
+          sendNet({ type: 'hello', skinId: saveData.equipped, subMode: onlineSubMode });
+          if (Net.role === 'host') {
+            setOnlineStatus('✅ Friend joined! Click Play Game to start.', 'var(--success)');
+          } else {
+            setOnlineStatus('✅ Connected to host! Waiting for host to start...', 'var(--success)');
+          }
+          updateStartButtonState();
+          updateHUD();
+        });
+
+        conn.on('data', (msg) => {
+          if (!msg || typeof msg !== 'object') return;
+          handleNetMessage(msg);
+        });
+
+        conn.on('close', () => {
+          const wasPlaying = state === 'playing';
+          Net.connected = false;
+          Net.conn = null;
+          setOnlineStatus('Opponent disconnected.', 'var(--danger)');
+          if (wasPlaying && gameMode === 'online') {
+            state = 'menu';
+            gameoverOverlay.classList.add('hidden');
+            startOverlay.classList.remove('hidden');
+          }
+          updateStartButtonState();
+          updateHUD();
+        });
+      }
+
+      function handleNetMessage(msg) {
+        if (Net.role === 'host') {
+          if (msg.type === 'hello' || msg.type === 'skin') {
+            Net.remoteSkinId = msg.skinId || 'classic';
+            if (players[1]) {
+              players[1].skinId = Net.remoteSkinId;
+              initPlayerSkinAbilities(players[1]);
+            }
+          } else if (msg.type === 'input') {
+            Net.remoteInput.dx = Number(msg.dx) || 0;
+            Net.remoteInput.dy = Number(msg.dy) || 0;
+            Net.remoteInput.mag = Math.max(0, Math.min(1, Number(msg.mag) || 0));
+          }
+        } else if (Net.role === 'guest') {
+          if (msg.type === 'hello' || msg.type === 'submode') {
+            if (msg.subMode) {
+              onlineSubMode = msg.subMode;
+              updateOnlineSubmodeUI();
+            }
+          } else if (msg.type === 'start') {
+            startGuestMatch(msg);
+          } else if (msg.type === 'state') {
+            applyGuestState(msg);
+          } else if (msg.type === 'gameover') {
+            applyGuestGameOver(msg);
+          }
+        }
+      }
+
+      function startGuestMatch(msg) {
+        gameMode = 'online';
+        onlineSubMode = msg.subMode || 'coop';
+        updateOnlineSubmodeUI();
+
+        state = 'playing';
+        startOverlay.classList.add('hidden');
+        gameoverOverlay.classList.add('hidden');
+        shopOverlay.classList.add('hidden');
+
+        players = [
+          createPlayer(1, ONLINE_ARENA_W * 0.35, ONLINE_ARENA_H / 2),
+          createPlayer(2, ONLINE_ARENA_W * 0.65, ONLINE_ARENA_H / 2)
+        ];
+        players[0].skinId = msg.p1Skin || 'classic';
+        players[1].skinId = saveData.equipped;
+        players.forEach(initPlayerSkinAbilities);
+
+        coins = [];
+        hazards = [];
+        powerups = [];
+        particles = [];
+        floatingTexts = [];
+        shockwaves = [];
+        trail = [];
+
+        teamScore = 0;
+        teamCoins = 0;
+        teamGems = 0;
+        Net.lastGuestBankCoins = 0;
+        Net.lastGuestBankGems = 0;
+        shakeTimer = 0;
+        updateHUD();
+      }
+
+      function triggerGuestEvent(ev) {
+        if (ev.kind === 'coin') {
+          Sound.coin();
+          spawnParticles(ev.x, ev.y, ev.color || '#FBBC05', 9, 130);
+          addFloatText(ev.x, ev.y - 10, ev.text || '+1', ev.color || '#FBBC05');
+        } else if (ev.kind === 'gem') {
+          Sound.gem();
+          spawnParticles(ev.x, ev.y, '#4285F4', 16, 190);
+          addFloatText(ev.x, ev.y - 10, ev.text || '+1 💎', '#8ab4f8');
+        } else if (ev.kind === 'powerup') {
+          Sound.powerup();
+          spawnParticles(ev.x, ev.y, ev.color || '#4285F4', 14, 160);
+          addFloatText(ev.x, ev.y - 10, ev.text, ev.color || '#4285F4');
+        } else if (ev.kind === 'shockwave') {
+          Sound.shockwave();
+          spawnShockwave(ev.x, ev.y, 135, ev.color || '#22d3ee');
+          addFloatText(ev.x, ev.y - 16, ev.text || 'PULSE!', '#67e8f9');
+        } else if (ev.kind === 'revive') {
+          Sound.revive();
+          spawnParticles(ev.x, ev.y, '#34A853', 22, 180);
+          addFloatText(ev.x, ev.y - 16, 'REVIVED!', '#34A853');
+        } else if (ev.kind === 'shieldBreak') {
+          Sound.shieldBreak();
+          shakeTimer = 0.18;
+          spawnParticles(ev.x, ev.y, '#4285F4', 18, 200);
+          addFloatText(ev.x, ev.y - 18, 'SHIELD SAVED!', '#8ab4f8');
+        } else if (ev.kind === 'hit') {
+          Sound.hit();
+          shakeTimer = 0.32;
+          spawnParticles(ev.x, ev.y, '#EA4335', 28, 240);
+          if (ev.text) addFloatText(ev.x, ev.y - 18, ev.text, '#f28b82');
+        }
+      }
+
+      function syncEntitiesList(localList, remoteList, mapFn) {
+        const byUid = new Map();
+        localList.forEach(item => byUid.set(item.uid, item));
+        const next = [];
+        for (let i = 0; i < remoteList.length; i++) {
+          const r = remoteList[i];
+          const existing = byUid.get(r.uid);
+          if (existing) {
+            existing.tx = r.x;
+            existing.ty = r.y;
+            Object.assign(existing, mapFn(r));
+            next.push(existing);
+          } else {
+            next.push({
+              ...r,
+              tx: r.x,
+              ty: r.y,
+              ...mapFn(r)
+            });
+          }
+        }
+        return next;
+      }
+
+      function applyGuestState(pkt) {
+        if (state !== 'playing') return;
+
+        teamScore = pkt.ts;
+        teamCoins = pkt.tc;
+        teamGems = pkt.tg || 0;
+
+        if (pkt.players) {
+          pkt.players.forEach((rp, idx) => {
+            const lp = players[idx];
+            if (!lp) return;
+            lp.tx = rp.x;
+            lp.ty = rp.y;
+            if (Math.hypot(rp.x - lp.x, rp.y - lp.y) > 90) {
+              lp.x = rp.x;
+              lp.y = rp.y;
+            }
+            lp.vx = rp.vx;
+            lp.vy = rp.vy;
+            lp.shield = !!rp.sh;
+            lp.magnetTimer = rp.mg;
+            lp.invulnTimer = rp.iv;
+            lp.alive = !!rp.al;
+            lp.reviveProgress = rp.rv;
+            lp.score = rp.sc;
+            lp.coins = rp.cn;
+            lp.gems = rp.gm || 0;
+            lp.aegisTimer = rp.ag !== undefined ? rp.ag : lp.aegisTimer;
+            lp.shockwaveTimer = rp.sw !== undefined ? rp.sw : lp.shockwaveTimer;
+            if (lp.skinId !== rp.sk) {
+              lp.skinId = rp.sk;
+              initPlayerSkinAbilities(lp);
+              lp.shield = !!rp.sh;
+            }
+          });
+        }
+
+        const trackedCoins = onlineSubMode === 'coop' ? pkt.tc : (players[1] ? players[1].coins : 0);
+        if (trackedCoins > Net.lastGuestBankCoins) {
+          saveData.coins += (trackedCoins - Net.lastGuestBankCoins);
+          Net.lastGuestBankCoins = trackedCoins;
+          writeSave();
+        }
+
+        const trackedGems = onlineSubMode === 'coop' ? (pkt.tg || 0) : (players[1] ? players[1].gems : 0);
+        if (trackedGems > Net.lastGuestBankGems) {
+          saveData.gems += (trackedGems - Net.lastGuestBankGems);
+          Net.lastGuestBankGems = trackedGems;
+          writeSave();
+        }
+
+        coins = syncEntitiesList(coins, pkt.coins || [], r => ({
+          r: r.g ? 12 : 10,
+          isGem: !!r.g,
+          life: r.lf,
+          bobOffset: r.uid * 0.7
+        }));
+
+        hazards = syncEntitiesList(hazards, pkt.hazards || [], r => ({
+          r: r.b ? 14 : 12,
+          bouncer: !!r.b,
+          rot: r.rot
+        }));
+
+        powerups = syncEntitiesList(powerups, pkt.powerups || [], r => ({
+          r: 13,
+          type: r.t === 'm' ? 'magnet' : 'shield',
+          bob: r.uid * 0.9
+        }));
+
+        if (Array.isArray(pkt.ev)) {
+          pkt.ev.forEach(triggerGuestEvent);
+        }
+
+        updateHUD();
+      }
+
+      function applyGuestGameOver(msg) {
+        if (Array.isArray(msg.ev)) {
+          msg.ev.forEach(triggerGuestEvent);
+        }
+        teamScore = msg.teamScore;
+        teamCoins = msg.teamCoins;
+        teamGems = msg.teamGems || 0;
+        if (players[0]) {
+          players[0].score = msg.p1Score;
+          players[0].coins = msg.p1Coins;
+          players[0].gems = msg.p1Gems || 0;
+        }
+        if (players[1]) {
+          players[1].score = msg.p2Score;
+          players[1].coins = msg.p2Coins;
+          players[1].gems = msg.p2Gems || 0;
+        }
+        const trackedCoins = onlineSubMode === 'coop' ? msg.teamCoins : msg.p2Coins;
+        if (trackedCoins > Net.lastGuestBankCoins) {
+          saveData.coins += (trackedCoins - Net.lastGuestBankCoins);
+          Net.lastGuestBankCoins = trackedCoins;
+        }
+        const trackedGems = onlineSubMode === 'coop' ? (msg.teamGems || 0) : (msg.p2Gems || 0);
+        if (trackedGems > Net.lastGuestBankGems) {
+          saveData.gems += (trackedGems - Net.lastGuestBankGems);
+          Net.lastGuestBankGems = trackedGems;
+        }
+        writeSave();
+        showGameOverOverlay(true);
+      }
+
+      // ==========================================
+      // 7. PLAYER CREATION & MODE UI
+      // ==========================================
+      function initPlayerSkinAbilities(p) {
+        p.speed = 350;
+        p.r = 16;
+        p.aegisTimer = 18;
+        p.shockwaveTimer = 6;
+        p.midasCounter = 0;
+
+        const ab = getSkinById(p.skinId).ability?.id;
+        if (ab === 'speed') {
+          p.speed = 438; // +25%
+          p.r = 14;
+        } else if (ab === 'aegis') {
+          p.shield = true;
+          p.aegisTimer = 18;
+        } else if (ab === 'shockwave') {
+          p.shockwaveTimer = 6;
+        } else if (ab === 'sovereign') {
+          p.shield = true;
+          p.speed = 413; // +18%
+        }
+      }
+
+      function createPlayer(id, x, y) {
+        const p = {
+          id,
+          label: `P${id}`,
+          ringColor: id === 1 ? '#4285F4' : '#EA4335',
+          badgeColor: id === 1 ? '#1a73e8' : '#d93025',
+          x,
+          y,
+          tx: x,
+          ty: y,
+          vx: 0,
+          vy: 0,
+          r: 16,
+          speed: 350,
+          shield: false,
+          magnetTimer: 0,
+          invulnTimer: 0.9,
+          alive: true,
+          reviveProgress: 0,
+          score: 0,
+          coins: 0,
+          gems: 0,
+          aegisTimer: 18,
+          shockwaveTimer: 6,
+          midasCounter: 0,
+          skinId: id === 1 ? saveData.equipped : (gameMode === 'online' ? Net.remoteSkinId : saveData.equippedP2)
+        };
+        initPlayerSkinAbilities(p);
+        return p;
+      }
+
+      function getEffective2PSubmode() {
+        return gameMode === 'online' ? onlineSubMode : gameMode;
+      }
+
+      function updateOnlineSubmodeUI() {
+        const cBtn = document.getElementById('online-type-coop');
+        const vBtn = document.getElementById('online-type-versus');
+        cBtn.className = 'ptoggle-btn' + (onlineSubMode === 'coop' ? ' active-p1' : '');
+        vBtn.className = 'ptoggle-btn' + (onlineSubMode === 'versus' ? ' active-p2' : '');
+      }
+
+      function updateStartButtonState() {
+        if (gameMode === 'online') {
+          if (Net.role === 'host' && Net.connected) {
+            btnStart.disabled = false;
+            btnStart.textContent = '▶ Start Online Match';
+          } else if (Net.role === 'guest' && Net.connected) {
+            btnStart.disabled = true;
+            btnStart.textContent = '⏳ Waiting for Host...';
+          } else {
+            btnStart.disabled = true;
+            btnStart.textContent = '🌐 Connect First';
+          }
+        } else {
+          btnStart.disabled = false;
+          btnStart.textContent = '▶ Play Game';
+        }
+      }
+
+      function updateModeUI() {
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.mode === gameMode);
+        });
+
+        onlineLobby.classList.toggle('hidden', gameMode !== 'online');
+
+        if (gameMode === '1p') {
+          controlsHintBox.innerHTML =
+            `<strong>Move:</strong> Arrow Keys / WASD, or Drag with Mouse / Touch<br>` +
+            `<strong>Pickups:</strong> 🧲 Magnet &nbsp;|&nbsp; 🛡️ Shield &nbsp;|&nbsp; 🪙 +1 Coin &nbsp;|&nbsp; 💎 +1 Gem`;
+        } else if (gameMode === 'coop') {
+          controlsHintBox.innerHTML =
+            `<strong style="color:var(--p1)">Player 1:</strong> WASD (or Left Touch) &nbsp;|&nbsp; ` +
+            `<strong style="color:var(--p2)">Player 2:</strong> Arrow Keys (or Right Touch)<br>` +
+            `<strong>Co-op Rule:</strong> Stand over a fallen teammate for 1.4s to <strong>Revive</strong> them!`;
+        } else if (gameMode === 'versus') {
+          controlsHintBox.innerHTML =
+            `<strong style="color:var(--p1)">Player 1:</strong> WASD (or Left Touch) &nbsp;|&nbsp; ` +
+            `<strong style="color:var(--p2)">Player 2:</strong> Arrow Keys (or Right Touch)<br>` +
+            `<strong>Versus Rule:</strong> Bump rivals, grab gems, and finish with the highest score!`;
+        } else {
+          controlsHintBox.innerHTML =
+            `<strong>Online Controls:</strong> Use <strong>WASD, Arrows, Mouse, or Touch</strong> on your own device!<br>` +
+            `Share your 5-character room code to play <strong>Co-op</strong> or <strong>Versus</strong> anywhere.`;
+        }
+        updateStartButtonState();
+      }
+
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.onclick = () => {
+          const nextMode = btn.dataset.mode;
+          if (gameMode === 'online' && nextMode !== 'online') {
+            cleanupNetwork();
+          }
+          gameMode = nextMode;
+          updateModeUI();
+          updateHUD();
+        };
+      });
+
+      document.getElementById('online-type-coop').onclick = () => {
+        if (Net.role === 'guest' && Net.connected) return;
+        onlineSubMode = 'coop';
+        updateOnlineSubmodeUI();
+        if (Net.role === 'host' && Net.connected) sendNet({ type: 'submode', subMode: 'coop' });
+      };
+      document.getElementById('online-type-versus').onclick = () => {
+        if (Net.role === 'guest' && Net.connected) return;
+        onlineSubMode = 'versus';
+        updateOnlineSubmodeUI();
+        if (Net.role === 'host' && Net.connected) sendNet({ type: 'submode', subMode: 'versus' });
+      };
+
+      document.getElementById('btn-host-room').onclick = hostRoom;
+      document.getElementById('btn-join-room').onclick = joinRoom;
+      document.getElementById('join-code-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') joinRoom();
+      });
+      document.getElementById('btn-copy-code').onclick = () => {
+        if (!Net.roomCode) return;
+        navigator.clipboard?.writeText(Net.roomCode).then(() => {
+          const b = document.getElementById('btn-copy-code');
+          b.textContent = 'Copied!';
+          setTimeout(() => { b.textContent = 'Copy'; }, 1200);
+        }).catch(() => {});
+      };
+
+      function updateHUD() {
+        hudCoins.textContent = saveData.coins;
+        hudGems.textContent = saveData.gems;
+        shopCoins.textContent = saveData.coins;
+        shopGems.textContent = saveData.gems;
+
+        const isVersus = (gameMode === 'versus') || (gameMode === 'online' && onlineSubMode === 'versus');
+        const isCoop = (gameMode === 'coop') || (gameMode === 'online' && onlineSubMode === 'coop');
+
+        if (isVersus) {
+          pillScore.classList.add('hidden');
+          pillBest.classList.add('hidden');
+          pillP1.classList.remove('hidden');
+          pillP2.classList.remove('hidden');
+          hudP1Score.textContent = players[0] ? Math.floor(players[0].score) : 0;
+          hudP2Score.textContent = players[1] ? Math.floor(players[1].score) : 0;
+        } else {
+          pillScore.classList.remove('hidden');
+          pillBest.classList.remove('hidden');
+          pillP1.classList.add('hidden');
+          pillP2.classList.add('hidden');
+          hudScoreLabel.textContent = isCoop ? 'Team' : 'Score';
+          hudScore.textContent = Math.floor(teamScore);
+          hudBest.textContent = isCoop ? saveData.bestCoopScore : saveData.bestScore;
+        }
+
+        if (gameMode === 'online' && Net.connected) {
+          pillNet.classList.remove('hidden');
+          hudNetDot.style.color = 'var(--success)';
+          hudNetLabel.textContent = Net.role === 'host' ? `P1 Host (${Net.roomCode})` : `P2 Guest (${Net.roomCode})`;
+        } else {
+          pillNet.classList.add('hidden');
+        }
+
+        let html = '';
+        const is2P = gameMode !== '1p';
+        players.forEach(p => {
+          if (!p.alive) return;
+          const prefix = is2P ? `${p.label} ` : '';
+          const ab = getSkinById(p.skinId).ability?.id;
+
+          if (p.shield) {
+            html += `<div class="pu-badge" style="color:${p.badgeColor}; border-color:${p.ringColor};">🛡️ ${prefix}Shield</div>`;
+          } else if (ab === 'aegis') {
+            html += `<div class="pu-badge" style="color:#1e40af; border-color:#93c5fd;">🛡️ ${prefix}Aegis ${p.aegisTimer.toFixed(1)}s</div>`;
+          }
+
+          if (p.magnetTimer > 0) {
+            html += `<div class="pu-badge" style="color:#c2185b; border-color:#f48fb1;">🧲 ${prefix}${p.magnetTimer.toFixed(1)}s</div>`;
+          } else if (ab === 'magnet') {
+            html += `<div class="pu-badge" style="color:#86198f; border-color:#f0abfc;">🧲 ${prefix}Gravity Aura</div>`;
+          }
+
+          if (ab === 'shockwave') {
+            html += `<div class="pu-badge" style="color:#0e7490; border-color:#67e8f9;">⚡ ${prefix}Pulse ${p.shockwaveTimer.toFixed(1)}s</div>`;
+          } else if (ab === 'speed') {
+            html += `<div class="pu-badge" style="color:#15803d; border-color:#86efac;">⚡ ${prefix}+25% Speed</div>`;
+          } else if (ab === 'midas') {
+            html += `<div class="pu-badge" style="color:#b45309; border-color:#fcd34d;">👑 ${prefix}Midas (${p.midasCounter}/3)</div>`;
+          } else if (ab === 'sovereign') {
+            html += `<div class="pu-badge" style="color:#6d28d9; border-color:#c4b5fd;">✨ ${prefix}Sovereign 2x💎</div>`;
+          }
+        });
+        powerupBar.innerHTML = html;
+      }
+
+      function emitEvent(kind, x, y, color = '', text = '') {
+        if (gameMode === 'online' && Net.role === 'host') {
+          Net.pendingEvents.push({ kind, x, y, color, text });
+        }
+      }
+
+      function spawnParticles(x, y, color, count = 10, speed = 150) {
+        for (let i = 0; i < count; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = Math.random() * speed + 30;
+          particles.push({
+            x, y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            life: 0.45 + Math.random() * 0.3,
+            maxLife: 0.75,
+            size: Math.random() * 3.5 + 2,
+            color
+          });
+        }
+      }
+
+      function spawnShockwave(x, y, maxR = 135, color = '#22d3ee') {
+        shockwaves.push({ x, y, r: 12, maxR, life: 0.45, maxLife: 0.45, color });
+      }
+
+      function addFloatText(x, y, text, color) {
+        floatingTexts.push({ x, y, text, color, life: 0.85, maxLife: 0.85 });
+      }
+
+      function spawnCoin(isGem = false) {
+        const { aw, ah } = getArenaTransform();
+        const margin = 34;
+        let x, y, tries = 0;
+        do {
+          x = margin + Math.random() * (aw - margin * 2);
+          y = margin + Math.random() * (ah - margin * 2);
+          tries++;
+        } while (
+          players.some(p => p.alive && Math.hypot(x - p.x, y - p.y) < 75) &&
+          tries < 10
+        );
+
+        coins.push({
+          uid: nextUid++,
+          x, y,
+          r: isGem ? 12 : 10,
+          value: isGem ? 0 : 1,
+          gemValue: isGem ? 1 : 0,
+          scoreValue: isGem ? 125 : 25,
+          isGem,
+          bobOffset: Math.random() * Math.PI * 2,
+          life: isGem ? 10 : 14
+        });
+      }
+
+      function spawnPowerup() {
+        const { aw, ah } = getArenaTransform();
+        const margin = 40;
+        const type = Math.random() < 0.55 ? 'magnet' : 'shield';
+        powerups.push({
+          uid: nextUid++,
+          x: margin + Math.random() * (aw - margin * 2),
+          y: margin + Math.random() * (ah - margin * 2),
+          r: 13,
+          type,
+          life: 10,
+          bob: Math.random() * Math.PI * 2
+        });
+      }
+
+      function spawnHazard() {
+        const { aw, ah } = getArenaTransform();
+        const alivePlayers = players.filter(p => p.alive);
+        if (alivePlayers.length === 0) return;
+        const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+
+        const edge = Math.floor(Math.random() * 4);
+        let x, y;
+        const pad = 22;
+        if (edge === 0) { x = Math.random() * aw; y = -pad; }
+        else if (edge === 1) { x = aw + pad; y = Math.random() * ah; }
+        else if (edge === 2) { x = Math.random() * aw; y = ah + pad; }
+        else { x = -pad; y = Math.random() * ah; }
+
+        const targetX = target.x + (Math.random() - 0.5) * 140;
+        const targetY = target.y + (Math.random() - 0.5) * 140;
+        const angle = Math.atan2(targetY - y, targetX - x);
+
+        const diffScale = 1 + Math.min(1.4, elapsed * 0.015);
+        const speed = (105 + Math.random() * 75) * diffScale;
+        const bouncer = elapsed > 12 && Math.random() < 0.35;
+
+        hazards.push({
+          uid: nextUid++,
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          r: bouncer ? 14 : 12,
+          rot: 0,
+          bouncer,
+          bouncesLeft: bouncer ? 2 : 0
+        });
+      }
+
+      function startGame() {
+        if (gameMode === 'online') {
+          if (Net.role !== 'host' || !Net.connected) return;
+        }
+
+        state = 'playing';
+        startOverlay.classList.add('hidden');
+        gameoverOverlay.classList.add('hidden');
+        shopOverlay.classList.add('hidden');
+
+        const { aw, ah } = getArenaTransform();
+        if (gameMode === '1p') {
+          players = [createPlayer(1, aw / 2, ah / 2)];
+        } else {
+          players = [
+            createPlayer(1, aw * 0.35, ah / 2),
+            createPlayer(2, aw * 0.65, ah / 2)
+          ];
+        }
+
+        coins = [];
+        hazards = [];
+        powerups = [];
+        particles = [];
+        floatingTexts = [];
+        shockwaves = [];
+        trail = [];
+        Net.pendingEvents = [];
+
+        teamScore = 0;
+        teamCoins = 0;
+        teamGems = 0;
+        elapsed = 0;
+        coinSpawnTimer = 0.2;
+        hazardSpawnTimer = 1.1;
+        powerupSpawnTimer = 6.5;
+        shakeTimer = 0;
+
+        const initialCoins = gameMode === '1p' ? 4 : 6;
+        for (let i = 0; i < initialCoins; i++) spawnCoin(false);
+
+        if (gameMode === 'online' && Net.role === 'host') {
+          sendNet({
+            type: 'start',
+            subMode: onlineSubMode,
+            p1Skin: saveData.equipped,
+            p2Skin: Net.remoteSkinId
+          });
+        }
+
+        updateHUD();
+      }
+
+      function showGameOverOverlay(isGuest = false) {
+        state = 'gameover';
+        writeSave();
+        updateHUD();
+
+        const goTitle = document.getElementById('go-title');
+        const newBestMsg = document.getElementById('new-best-msg');
+        const goSubMsg = document.getElementById('go-sub-msg');
+        const l1 = document.getElementById('go-label-1');
+        const v1 = document.getElementById('go-val-1');
+        const l2 = document.getElementById('go-label-2');
+        const v2 = document.getElementById('go-val-2');
+        const l3 = document.getElementById('go-label-3');
+        const v3 = document.getElementById('go-val-3');
+
+        newBestMsg.style.display = 'none';
+        goSubMsg.style.display = 'none';
+
+        const sub = getEffective2PSubmode();
+
+        if (gameMode === '1p') {
+          const finalScore = Math.floor(teamScore);
+          const isNewBest = finalScore > saveData.bestScore;
+          if (isNewBest) {
+            saveData.bestScore = finalScore;
+            writeSave();
+            newBestMsg.style.display = 'block';
+          }
+          goTitle.textContent = 'Game Over';
+          goTitle.style.color = 'var(--danger)';
+          l1.textContent = 'Score';
+          v1.textContent = finalScore;
+          v1.style.color = 'var(--text)';
+          l2.textContent = 'Earned';
+          v2.innerHTML = `<span style="color:var(--gold);">+${teamCoins}🪙</span> <span style="color:var(--gem);">+${teamGems}💎</span>`;
+          l3.textContent = 'Total Bank';
+          v3.innerHTML = `${saveData.coins}🪙 <span style="color:var(--gem);">${saveData.gems}💎</span>`;
+        } else if (sub === 'coop') {
+          const finalScore = Math.floor(teamScore);
+          const isNewBest = finalScore > saveData.bestCoopScore;
+          if (isNewBest) {
+            saveData.bestCoopScore = finalScore;
+            writeSave();
+            newBestMsg.style.display = 'block';
+          }
+          goTitle.textContent = 'Team Wiped Out';
+          goTitle.style.color = 'var(--danger)';
+          l1.textContent = 'Team Score';
+          v1.textContent = finalScore;
+          v1.style.color = 'var(--text)';
+          l2.textContent = 'Earned';
+          v2.innerHTML = `<span style="color:var(--gold);">+${teamCoins}🪙</span> <span style="color:var(--gem);">+${teamGems}💎</span>`;
+          l3.textContent = 'Total Bank';
+          v3.innerHTML = `${saveData.coins}🪙 <span style="color:var(--gem);">${saveData.gems}💎</span>`;
+        } else {
+          const p1s = Math.floor(players[0].score);
+          const p2s = Math.floor(players[1].score);
+          if (p1s > p2s) {
+            goTitle.textContent = '🏆 Player 1 Wins!';
+            goTitle.style.color = 'var(--p1)';
+          } else if (p2s > p1s) {
+            goTitle.textContent = '🏆 Player 2 Wins!';
+            goTitle.style.color = 'var(--p2)';
+          } else {
+            goTitle.textContent = '🤝 Draw Game!';
+            goTitle.style.color = 'var(--gold)';
+          }
+          l1.textContent = `P1 (+${players[0].coins}🪙 +${players[0].gems}💎)`;
+          v1.textContent = p1s;
+          v1.style.color = 'var(--p1)';
+          l2.textContent = `P2 (+${players[1].coins}🪙 +${players[1].gems}💎)`;
+          v2.textContent = p2s;
+          v2.style.color = 'var(--p2)';
+          l3.textContent = 'Your Bank';
+          v3.innerHTML = `${saveData.coins}🪙 <span style="color:var(--gem);">${saveData.gems}💎</span>`;
+        }
+
+        if (isGuest) {
+          btnRetry.disabled = true;
+          btnRetry.textContent = '⏳ Host Restarts';
+          goSubMsg.style.display = 'block';
+          goSubMsg.textContent = 'Waiting for host to start the next round...';
+        } else {
+          btnRetry.disabled = false;
+          btnRetry.textContent = '↻ Play Again';
+        }
+
+        setTimeout(() => {
+          if (state === 'gameover') {
+            gameoverOverlay.classList.remove('hidden');
+          }
+        }, 420);
+      }
+
+      function triggerGameOver() {
+        if (gameMode === 'online' && Net.role === 'host') {
+          sendNet({
+            type: 'gameover',
+            subMode: onlineSubMode,
+            teamScore: Math.floor(teamScore),
+            teamCoins,
+            teamGems,
+            p1Score: players[0] ? Math.floor(players[0].score) : 0,
+            p1Coins: players[0] ? players[0].coins : 0,
+            p1Gems: players[0] ? players[0].gems : 0,
+            p2Score: players[1] ? Math.floor(players[1].score) : 0,
+            p2Coins: players[1] ? players[1].coins : 0,
+            p2Gems: players[1] ? players[1].gems : 0,
+            ev: Net.pendingEvents.splice(0)
+          });
+        }
+        showGameOverOverlay(false);
+      }
+
+      // ==========================================
+      // 8. SKIN SHOP UI & LIVE PREVIEWS
+      // ==========================================
+      const previewCanvases = [];
+
+      function updateShopTabs() {
+        const t1 = document.getElementById('shop-tab-p1');
+        const t2 = document.getElementById('shop-tab-p2');
+        const toggle = document.getElementById('shop-player-toggle');
+        toggle.style.display = gameMode === 'online' ? 'none' : 'inline-flex';
+        if (gameMode === 'online') shopTargetPlayer = 1;
+        t1.className = 'ptoggle-btn' + (shopTargetPlayer === 1 ? ' active-p1' : '');
+        t2.className = 'ptoggle-btn' + (shopTargetPlayer === 2 ? ' active-p2' : '');
+      }
+
+      document.getElementById('shop-tab-p1').onclick = () => {
+        shopTargetPlayer = 1;
+        updateShopTabs();
+        renderShop();
+      };
+      document.getElementById('shop-tab-p2').onclick = () => {
+        shopTargetPlayer = 2;
+        updateShopTabs();
+        renderShop();
+      };
+
+      function renderSkinCard(skin, currentEquipped) {
+        const unlocked = saveData.unlocked.includes(skin.id);
+        const equipped = currentEquipped === skin.id;
+        const isGem = skin.currency === 'gems';
+        const isMythic = !!skin.ability;
+
+        const item = document.createElement('div');
+        item.className = 'skin-item' +
+          (isMythic ? ' mythic-tier' : (isGem ? ' gem-tier' : '')) +
+          (equipped ? (shopTargetPlayer === 1 ? ' equipped' : ' equipped-p2') : '');
+
+        const pCanvas = document.createElement('canvas');
+        pCanvas.width = 66;
+        pCanvas.height = 66;
+        pCanvas.className = 'skin-preview';
+        previewCanvases.push({ canvas: pCanvas, skin });
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'skin-name';
+        nameEl.textContent = skin.name;
+
+        const descEl = document.createElement('div');
+        descEl.className = 'skin-desc';
+        descEl.textContent = skin.desc;
+
+        item.append(pCanvas, nameEl, descEl);
+
+        if (skin.ability) {
+          const abEl = document.createElement('div');
+          abEl.className = 'skin-ability';
+          abEl.innerHTML = `✨ <strong>${skin.ability.name}:</strong> ${skin.ability.desc}`;
+          item.appendChild(abEl);
+        }
+
+        const btn = document.createElement('button');
+        if (equipped) {
+          btn.className = 'skin-btn equipped-btn';
+          btn.textContent = gameMode === 'online' ? '✓ Equipped' : `✓ P${shopTargetPlayer} Equipped`;
+        } else if (unlocked) {
+          btn.className = 'skin-btn equip';
+          btn.textContent = gameMode === 'online' ? 'Equip' : `Equip P${shopTargetPlayer}`;
+          btn.onclick = () => {
+            if (shopTargetPlayer === 1) {
+              saveData.equipped = skin.id;
+              if (gameMode === 'online' && Net.connected) {
+                sendNet({ type: 'skin', skinId: skin.id });
+              }
+            } else {
+              saveData.equippedP2 = skin.id;
+            }
+            writeSave();
+            renderShop();
+          };
+        } else {
+          const balance = isGem ? saveData.gems : saveData.coins;
+          let buyClass = 'skin-btn buy';
+          if (isMythic) {
+            buyClass += isGem ? ' buy-mythic-gem' : ' buy-mythic-coin';
+          } else if (isGem) {
+            buyClass += ' buy-gem';
+          }
+          btn.className = buyClass;
+          btn.disabled = balance < skin.price;
+          const icon = isGem
+            ? `<span class="gem-dot" style="width:9px;height:9px;margin:0 1px;"></span>`
+            : `<span class="coin-dot" style="width:11px;height:11px;"></span>`;
+          btn.innerHTML = `${icon} ${skin.price}`;
+          btn.onclick = () => {
+            const currentBal = isGem ? saveData.gems : saveData.coins;
+            if (currentBal >= skin.price) {
+              if (isGem) saveData.gems -= skin.price;
+              else saveData.coins -= skin.price;
+              saveData.unlocked.push(skin.id);
+              if (shopTargetPlayer === 1) {
+                saveData.equipped = skin.id;
+                if (gameMode === 'online' && Net.connected) {
+                  sendNet({ type: 'skin', skinId: skin.id });
+                }
+              } else {
+                saveData.equippedP2 = skin.id;
+              }
+              writeSave();
+              Sound.unlock();
+              updateHUD();
+              renderShop();
+            }
+          };
+        }
+
+        item.appendChild(btn);
+        return item;
+      }
+
+      function renderShop() {
+        const grid = document.getElementById('skin-grid');
+        grid.innerHTML = '';
+        previewCanvases.length = 0;
+        shopCoins.textContent = saveData.coins;
+        shopGems.textContent = saveData.gems;
+
+        const currentEquipped = shopTargetPlayer === 1 ? saveData.equipped : saveData.equippedP2;
+
+        const coinHeader = document.createElement('div');
+        coinHeader.className = 'skin-section-title';
+        coinHeader.innerHTML = `<span class="coin-dot" style="width:12px;height:12px;"></span> Coin Skins`;
+        grid.appendChild(coinHeader);
+
+        SKINS.filter(s => !s.ability && s.currency !== 'gems').forEach(skin => {
+          grid.appendChild(renderSkinCard(skin, currentEquipped));
+        });
+
+        const gemHeader = document.createElement('div');
+        gemHeader.className = 'skin-section-title';
+        gemHeader.style.color = '#1967d2';
+        gemHeader.style.marginTop = '10px';
+        gemHeader.innerHTML = `<span class="gem-dot" style="width:10px;height:10px;"></span> Gem Exclusives`;
+        grid.appendChild(gemHeader);
+
+        SKINS.filter(s => !s.ability && s.currency === 'gems').forEach(skin => {
+          grid.appendChild(renderSkinCard(skin, currentEquipped));
+        });
+
+        const mythicHeader = document.createElement('div');
+        mythicHeader.className = 'skin-section-title';
+        mythicHeader.style.color = '#6d28d9';
+        mythicHeader.style.marginTop = '10px';
+        mythicHeader.innerHTML = `✨ Mythic Ability Skins <span style="font-size:0.72rem;font-weight:500;text-transform:none;color:var(--muted);margin-left:4px;">(High Cost + Passive Powers)</span>`;
+        grid.appendChild(mythicHeader);
+
+        SKINS.filter(s => !!s.ability).forEach(skin => {
+          grid.appendChild(renderSkinCard(skin, currentEquipped));
+        });
+      }
+
+      function openShop(from) {
+        returnOverlayAfterShop = from;
+        startOverlay.classList.add('hidden');
+        gameoverOverlay.classList.add('hidden');
+        updateShopTabs();
+        renderShop();
+        shopOverlay.classList.remove('hidden');
+      }
+
+      function closeShop() {
+        shopOverlay.classList.add('hidden');
+        if (returnOverlayAfterShop === 'menu') {
+          startOverlay.classList.remove('hidden');
+        } else if (returnOverlayAfterShop === 'gameover') {
+          gameoverOverlay.classList.remove('hidden');
+        }
+      }
+
+      // ==========================================
+      // 9. INPUT HANDLING (KEYBOARD + MULTI-TOUCH)
+      // ==========================================
+      window.addEventListener('keydown', (e) => {
+        if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+          return;
+        }
+        const k = e.key.toLowerCase();
+        keys[k] = true;
+        if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) {
+          if (state === 'playing') e.preventDefault();
+        }
+        if ((e.key === ' ' || e.key === 'Enter') && shopOverlay.classList.contains('hidden')) {
+          if (state === 'menu' || (state === 'gameover' && !btnRetry.disabled)) {
+            startGame();
+          }
+        }
+        if (k === 's') {
+          if (!shopOverlay.classList.contains('hidden')) {
+            closeShop();
+          } else if (state !== 'playing') {
+            openShop(state);
+          }
+        }
+        if (k === 'm') {
+          toggleMute();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+      });
+
+      function updateMousePos(e) {
+        const pt = toArenaCoords(e.clientX, e.clientY);
+        mouseX = pt.x;
+        mouseY = pt.y;
+      }
+
+      canvas.addEventListener('mousedown', (e) => { mouseActive = true; updateMousePos(e); });
+      window.addEventListener('mousemove', (e) => { if (mouseActive) updateMousePos(e); });
+      window.addEventListener('mouseup', () => { mouseActive = false; });
+
+      function syncTouches(e) {
+        const rect = canvas.getBoundingClientRect();
+        touchZones.p1 = null;
+        touchZones.p2 = null;
+        for (let i = 0; i < e.touches.length; i++) {
+          const t = e.touches[i];
+          const pt = toArenaCoords(t.clientX, t.clientY);
+          if (gameMode === '1p' || gameMode === 'online') {
+            touchZones.p1 = pt;
+          } else {
+            if ((t.clientX - rect.left) < rect.width / 2) touchZones.p1 = pt;
+            else touchZones.p2 = pt;
+          }
+        }
+      }
+
+      canvas.addEventListener('touchstart', syncTouches, { passive: true });
+      canvas.addEventListener('touchmove', syncTouches, { passive: true });
+      window.addEventListener('touchend', syncTouches, { passive: true });
+      window.addEventListener('touchcancel', syncTouches, { passive: true });
+
+      // Buttons
+      btnStart.onclick = startGame;
+      btnRetry.onclick = startGame;
+      document.getElementById('btn-main-menu').onclick = () => {
+        if (gameMode === 'online') cleanupNetwork();
+        state = 'menu';
+        gameoverOverlay.classList.add('hidden');
+        startOverlay.classList.remove('hidden');
+        updateModeUI();
+        updateHUD();
+      };
+      document.getElementById('btn-open-shop-start').onclick = () => openShop('menu');
+      document.getElementById('btn-open-shop-go').onclick = () => openShop('gameover');
+      document.getElementById('btn-shop-hud').onclick = () => {
+        if (state === 'playing') return;
+        openShop(state);
+      };
+      document.getElementById('btn-close-shop').onclick = closeShop;
+
+      function toggleMute() {
+        Sound.setMuted(!Sound.isMuted());
+        document.getElementById('btn-mute').textContent = Sound.isMuted() ? '🔇' : '🔊';
+      }
+      document.getElementById('btn-mute').onclick = toggleMute;
+
+      // ==========================================
+      // 10. UPDATE & RENDER LOOP
+      // ==========================================
+      let lastTime = performance.now();
+      let globalTime = 0;
+
+      function getLocalSinglePlayerDirection(anchorPlayer) {
+        let dx = 0;
+        let dy = 0;
+        if (keys['arrowleft'] || keys['a']) dx -= 1;
+        if (keys['arrowright'] || keys['d']) dx += 1;
+        if (keys['arrowup'] || keys['w']) dy -= 1;
+        if (keys['arrowdown'] || keys['s']) dy += 1;
+        if (dx !== 0 || dy !== 0) {
+          const len = Math.hypot(dx, dy);
+          return { dx: dx / len, dy: dy / len, mag: 1 };
+        }
+        const ptr = touchZones.p1 || (mouseActive ? { x: mouseX, y: mouseY } : null);
+        if (ptr && anchorPlayer) {
+          const pdx = ptr.x - anchorPlayer.x;
+          const pdy = ptr.y - anchorPlayer.y;
+          const dist = Math.hypot(pdx, pdy);
+          if (dist > 6) {
+            return {
+              dx: pdx / dist,
+              dy: pdy / dist,
+              mag: Math.min(1, (dist * 12) / anchorPlayer.speed)
+            };
+          }
+        }
+        return { dx: 0, dy: 0, mag: 0 };
+      }
+
+      function getPlayerMovementInput(p) {
+        if (gameMode === 'online') {
+          if (p.id === 1) {
+            return getLocalSinglePlayerDirection(p);
+          }
+          return Net.remoteInput;
+        }
+
+        if (gameMode === '1p') {
+          return getLocalSinglePlayerDirection(p);
+        }
+
+        let dx = 0;
+        let dy = 0;
+        if (p.id === 1) {
+          if (keys['a']) dx -= 1;
+          if (keys['d']) dx += 1;
+          if (keys['w']) dy -= 1;
+          if (keys['s']) dy += 1;
+          if (dx === 0 && dy === 0 && touchZones.p1) {
+            const pdx = touchZones.p1.x - p.x;
+            const pdy = touchZones.p1.y - p.y;
+            const dist = Math.hypot(pdx, pdy);
+            if (dist > 6) return { dx: pdx / dist, dy: pdy / dist, mag: Math.min(1, (dist * 12) / p.speed) };
+          }
+        } else {
+          if (keys['arrowleft']) dx -= 1;
+          if (keys['arrowright']) dx += 1;
+          if (keys['arrowup']) dy -= 1;
+          if (keys['arrowdown']) dy += 1;
+          if (dx === 0 && dy === 0 && touchZones.p2) {
+            const pdx = touchZones.p2.x - p.x;
+            const pdy = touchZones.p2.y - p.y;
+            const dist = Math.hypot(pdx, pdy);
+            if (dist > 6) return { dx: pdx / dist, dy: pdy / dist, mag: Math.min(1, (dist * 12) / p.speed) };
+          }
+        }
+        if (dx !== 0 || dy !== 0) {
+          const len = Math.hypot(dx, dy);
+          return { dx: dx / len, dy: dy / len, mag: 1 };
+        }
+        return { dx: 0, dy: 0, mag: 0 };
+      }
+
+      function updateGuestVisuals(dt) {
+        Net.inputTimer += dt;
+        if (Net.inputTimer >= 0.028 && players[1]) {
+          Net.inputTimer = 0;
+          const inp = getLocalSinglePlayerDirection(players[1]);
+          sendNet({
+            type: 'input',
+            dx: Number(inp.dx.toFixed(3)),
+            dy: Number(inp.dy.toFixed(3)),
+            mag: Number(inp.mag.toFixed(3))
+          });
+        }
+
+        const lerpRate = Math.min(1, dt * 18);
+        players.forEach(p => {
+          p.x += (p.tx - p.x) * lerpRate;
+          p.y += (p.ty - p.y) * lerpRate;
+          if (p.alive && Math.hypot(p.vx, p.vy) > 40) {
+            const skin = getSkinById(p.skinId);
+            const col = skin.trailColor === 'rainbow'
+              ? `hsl(${(globalTime * 180) % 360}, 95%, 65%)`
+              : skin.trailColor;
+            trail.push({
+              x: p.x + (Math.random() - 0.5) * 6,
+              y: p.y + (Math.random() - 0.5) * 6,
+              r: p.r * 0.45,
+              life: 0.25,
+              maxLife: 0.25,
+              color: col
+            });
+          }
+        });
+
+        coins.forEach(c => {
+          c.x += (c.tx - c.x) * lerpRate;
+          c.y += (c.ty - c.y) * lerpRate;
+        });
+        hazards.forEach(h => {
+          h.x += (h.tx - h.x) * lerpRate;
+          h.y += (h.ty - h.y) * lerpRate;
+        });
+        powerups.forEach(pu => {
+          pu.x += (pu.tx - pu.x) * lerpRate;
+          pu.y += (pu.ty - pu.y) * lerpRate;
+        });
+
+        for (let i = trail.length - 1; i >= 0; i--) {
+          trail[i].life -= dt;
+          if (trail[i].life <= 0) trail.splice(i, 1);
+        }
+        updateParticles(dt);
+      }
+
+      function update(dt) {
+        globalTime += dt;
+
+        if (!shopOverlay.classList.contains('hidden')) {
+          previewCanvases.forEach(({ canvas: pc, skin }) => {
+            const pctx = pc.getContext('2d');
+            pctx.clearRect(0, 0, 66, 66);
+            skin.draw(pctx, 33, 36, 15, globalTime, 0, 0);
+          });
+        }
+
+        if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
+
+        if (state !== 'playing') {
+          updateParticles(dt);
+          return;
+        }
+
+        if (gameMode === 'online' && Net.role === 'guest') {
+          updateGuestVisuals(dt);
+          return;
+        }
+
+        const { aw, ah } = getArenaTransform();
+        const isVersus = (gameMode === 'versus') || (gameMode === 'online' && onlineSubMode === 'versus');
+        const isCoop = (gameMode === 'coop') || (gameMode === 'online' && onlineSubMode === 'coop');
+
+        elapsed += dt;
+        const anyAlive = players.some(p => p.alive);
+        if (anyAlive && !isVersus) {
+          teamScore += dt * 10;
+        }
+
+        players.forEach(p => {
+          if (!p.alive) return;
+
+          if (isVersus) p.score += dt * 12;
+          if (p.invulnTimer > 0) p.invulnTimer = Math.max(0, p.invulnTimer - dt);
+          if (p.magnetTimer > 0) p.magnetTimer = Math.max(0, p.magnetTimer - dt);
+
+          const ab = getSkinById(p.skinId).ability?.id;
+
+          // Auto-Aegis ability (Aegis Titan)
+          if (ab === 'aegis') {
+            if (!p.shield) {
+              p.aegisTimer -= dt;
+              if (p.aegisTimer <= 0) {
+                p.shield = true;
+                p.aegisTimer = 18;
+                Sound.powerup();
+                spawnParticles(p.x, p.y, '#60a5fa', 16, 170);
+                addFloatText(p.x, p.y - 16, 'AEGIS READY!', '#93c5fd');
+                emitEvent('powerup', p.x, p.y, '#60a5fa', 'AEGIS READY!');
+              }
+            } else {
+              p.aegisTimer = 18;
+            }
+          }
+
+          // Shockwave Burst ability (Storm Valkyrie)
+          if (ab === 'shockwave') {
+            p.shockwaveTimer -= dt;
+            if (p.shockwaveTimer <= 0) {
+              p.shockwaveTimer = 10;
+              const pulseR = 135;
+              spawnShockwave(p.x, p.y, pulseR, '#22d3ee');
+              Sound.shockwave();
+              addFloatText(p.x, p.y - 18, 'PULSE!', '#67e8f9');
+              emitEvent('shockwave', p.x, p.y, '#22d3ee', 'PULSE!');
+
+              for (let hi = hazards.length - 1; hi >= 0; hi--) {
+                const hz = hazards[hi];
+                if (Math.hypot(hz.x - p.x, hz.y - p.y) <= pulseR + hz.r) {
+                  spawnParticles(hz.x, hz.y, '#22d3ee', 12, 160);
+                  p.score += 40;
+                  if (!isVersus) teamScore += 40;
+                  addFloatText(hz.x, hz.y - 8, '+40 ⚡', '#67e8f9');
+                  emitEvent('coin', hz.x, hz.y, '#22d3ee', '+40 ⚡');
+                  hazards.splice(hi, 1);
+                }
+              }
+            }
+          }
+
+          const inp = getPlayerMovementInput(p);
+          if (inp.mag > 0 && (inp.dx !== 0 || inp.dy !== 0)) {
+            p.vx = inp.dx * p.speed * inp.mag;
+            p.vy = inp.dy * p.speed * inp.mag;
+          } else {
+            p.vx *= 0.82;
+            p.vy *= 0.82;
+          }
+
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+
+          p.x = Math.max(p.r + 4, Math.min(aw - p.r - 4, p.x));
+          p.y = Math.max(p.r + 4, Math.min(ah - p.r - 4, p.y));
+
+          const skin = getSkinById(p.skinId);
+          if (Math.hypot(p.vx, p.vy) > 40) {
+            const col = skin.trailColor === 'rainbow'
+              ? `hsl(${(globalTime * 180) % 360}, 95%, 65%)`
+              : skin.trailColor;
+            trail.push({
+              x: p.x + (Math.random() - 0.5) * 6,
+              y: p.y + (Math.random() - 0.5) * 6,
+              r: p.r * 0.45,
+              life: 0.25,
+              maxLife: 0.25,
+              color: col
+            });
+          }
+        });
+
+        if (players.length === 2 && players[0].alive && players[1].alive) {
+          const p1 = players[0];
+          const p2 = players[1];
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dist = Math.hypot(dx, dy);
+          const minDist = p1.r + p2.r;
+          if (dist < minDist) {
+            const nx = dist > 0.001 ? dx / dist : 1;
+            const ny = dist > 0.001 ? dy / dist : 0;
+            const overlap = (minDist - dist) * 0.5;
+            p1.x -= nx * overlap;
+            p1.y -= ny * overlap;
+            p2.x += nx * overlap;
+            p2.y += ny * overlap;
+
+            if (isVersus) {
+              p1.vx -= nx * 120;
+              p1.vy -= ny * 120;
+              p2.vx += nx * 120;
+              p2.vy += ny * 120;
+            }
+          }
+        }
+
+        if (isCoop && players.length === 2) {
+          for (let i = 0; i < 2; i++) {
+            const fallen = players[i];
+            const helper = players[1 - i];
+            if (!fallen.alive && helper.alive) {
+              const dist = Math.hypot(helper.x - fallen.x, helper.y - fallen.y);
+              if (dist <= helper.r + fallen.r + 18) {
+                fallen.reviveProgress += dt / 1.4;
+                if (fallen.reviveProgress >= 1) {
+                  fallen.alive = true;
+                  fallen.reviveProgress = 0;
+                  fallen.invulnTimer = 2.0;
+                  Sound.revive();
+                  spawnParticles(fallen.x, fallen.y, '#34A853', 22, 180);
+                  addFloatText(fallen.x, fallen.y - 16, 'REVIVED!', '#34A853');
+                  emitEvent('revive', fallen.x, fallen.y);
+                }
+              } else {
+                fallen.reviveProgress = Math.max(0, fallen.reviveProgress - dt * 0.6);
+              }
+            }
+          }
+        }
+
+        for (let i = trail.length - 1; i >= 0; i--) {
+          trail[i].life -= dt;
+          if (trail[i].life <= 0) trail.splice(i, 1);
+        }
+
+        const maxCoins = gameMode === '1p' ? 10 : 14;
+        const coinRate = gameMode === '1p' ? 1.25 : 0.9;
+        coinSpawnTimer -= dt;
+        if (coinSpawnTimer <= 0) {
+          if (coins.length < maxCoins) {
+            spawnCoin(Math.random() < 0.18);
+          }
+          coinSpawnTimer = Math.max(0.45, coinRate - elapsed * 0.008);
+        }
+
+        const hazardFloor = gameMode === '1p' ? 0.38 : 0.3;
+        hazardSpawnTimer -= dt;
+        if (hazardSpawnTimer <= 0) {
+          spawnHazard();
+          hazardSpawnTimer = Math.max(hazardFloor, 1.35 - elapsed * 0.015);
+        }
+
+        powerupSpawnTimer -= dt;
+        if (powerupSpawnTimer <= 0) {
+          if (powerups.length < 2) spawnPowerup();
+          powerupSpawnTimer = 9 + Math.random() * 5;
+        }
+
+        for (let i = coins.length - 1; i >= 0; i--) {
+          const c = coins[i];
+          c.life -= dt;
+          if (c.life <= 0) {
+            coins.splice(i, 1);
+            continue;
+          }
+
+          let magnetTarget = null;
+          let magnetBestDist = Infinity;
+          players.forEach(p => {
+            if (!p.alive) return;
+            const ab = getSkinById(p.skinId).ability?.id;
+            let pullRadius = 0;
+            if (p.magnetTimer > 0) {
+              pullRadius = (ab === 'magnet' || ab === 'sovereign') ? 280 : 210;
+            } else if (ab === 'magnet') {
+              pullRadius = 135;
+            } else if (ab === 'sovereign') {
+              pullRadius = 115;
+            }
+            if (pullRadius > 0) {
+              const d = Math.hypot(p.x - c.x, p.y - c.y);
+              if (d < pullRadius && d < magnetBestDist) {
+                magnetBestDist = d;
+                magnetTarget = p;
+              }
+            }
+          });
+          if (magnetTarget && magnetBestDist > 1) {
+            const pull = 360 * dt;
+            c.x += ((magnetTarget.x - c.x) / magnetBestDist) * pull;
+            c.y += ((magnetTarget.y - c.y) / magnetBestDist) * pull;
+          }
+
+          for (let j = 0; j < players.length; j++) {
+            const p = players[j];
+            if (!p.alive) continue;
+            if (Math.hypot(p.x - c.x, p.y - c.y) < p.r + c.r + 3) {
+              const ab = getSkinById(p.skinId).ability?.id;
+
+              if (c.isGem) {
+                const gemGain = ab === 'sovereign' ? c.gemValue * 2 : c.gemValue;
+                const pts = ab === 'sovereign' ? Math.round(c.scoreValue * 1.5) : c.scoreValue;
+                p.score += pts;
+                if (!isVersus) teamScore += pts;
+
+                if (gameMode !== 'online' || onlineSubMode === 'coop' || p.id === 1) {
+                  saveData.gems += gemGain;
+                  writeSave();
+                }
+                teamGems += gemGain;
+                p.gems += gemGain;
+                Sound.gem();
+                spawnParticles(c.x, c.y, '#4285F4', 16, 190);
+                addFloatText(c.x, c.y - 10, `+${gemGain} 💎`, '#8ab4f8');
+                emitEvent('gem', c.x, c.y, '#4285F4', `+${gemGain} 💎`);
+              } else {
+                let coinGain = c.value;
+                let pts = c.scoreValue;
+                let bonusTriggered = false;
+                if (ab === 'midas') {
+                  pts = 38;
+                  p.midasCounter++;
+                  if (p.midasCounter >= 3) {
+                    p.midasCounter = 0;
+                    coinGain += 1;
+                    bonusTriggered = true;
+                  }
+                }
+                p.score += pts;
+                if (!isVersus) teamScore += pts;
+
+                if (gameMode !== 'online' || onlineSubMode === 'coop' || p.id === 1) {
+                  saveData.coins += coinGain;
+                  writeSave();
+                }
+                teamCoins += coinGain;
+                p.coins += coinGain;
+                Sound.coin();
+                spawnParticles(c.x, c.y, '#FBBC05', bonusTriggered ? 14 : 9, 130);
+                const labelTxt = bonusTriggered ? `+${coinGain} 👑` : `+${coinGain}`;
+                addFloatText(c.x, c.y - 10, labelTxt, '#FBBC05');
+                emitEvent('coin', c.x, c.y, '#FBBC05', labelTxt);
+              }
+              coins.splice(i, 1);
+              break;
+            }
+          }
+        }
+
+        for (let i = powerups.length - 1; i >= 0; i--) {
+          const pu = powerups[i];
+          pu.life -= dt;
+          if (pu.life <= 0) {
+            powerups.splice(i, 1);
+            continue;
+          }
+          for (let j = 0; j < players.length; j++) {
+            const p = players[j];
+            if (!p.alive) continue;
+            if (Math.hypot(p.x - pu.x, p.y - pu.y) < p.r + pu.r + 3) {
+              Sound.powerup();
+              if (pu.type === 'magnet') {
+                p.magnetTimer = 8;
+                spawnParticles(pu.x, pu.y, '#f472b6', 14, 160);
+                addFloatText(pu.x, pu.y - 10, 'MAGNET!', '#f472b6');
+                emitEvent('powerup', pu.x, pu.y, '#f472b6', 'MAGNET!');
+              } else {
+                p.shield = true;
+                spawnParticles(pu.x, pu.y, '#4285F4', 14, 160);
+                addFloatText(pu.x, pu.y - 10, 'SHIELD!', '#8ab4f8');
+                emitEvent('powerup', pu.x, pu.y, '#4285F4', 'SHIELD!');
+              }
+              powerups.splice(i, 1);
+              break;
+            }
+          }
+        }
+
+        for (let i = hazards.length - 1; i >= 0; i--) {
+          const h = hazards[i];
+          h.x += h.vx * dt;
+          h.y += h.vy * dt;
+          h.rot += dt * 4.5;
+
+          if (h.bouncer && h.bouncesLeft > 0) {
+            if ((h.x < h.r && h.vx < 0) || (h.x > aw - h.r && h.vx > 0)) {
+              h.vx *= -1;
+              h.bouncesLeft--;
+            }
+            if ((h.y < h.r && h.vy < 0) || (h.y > ah - h.r && h.vy > 0)) {
+              h.vy *= -1;
+              h.bouncesLeft--;
+            }
+          }
+
+          if (h.x < -60 || h.x > aw + 60 || h.y < -60 || h.y > ah + 60) {
+            hazards.splice(i, 1);
+            continue;
+          }
+
+          for (let j = 0; j < players.length; j++) {
+            const p = players[j];
+            if (!p.alive || p.invulnTimer > 0) continue;
+
+            const dist = Math.hypot(p.x - h.x, p.y - h.y);
+            if (dist < p.r + h.r - 3) {
+              if (p.shield) {
+                p.shield = false;
+                p.invulnTimer = 1.0;
+                shakeTimer = 0.18;
+                Sound.shieldBreak();
+                spawnParticles(h.x, h.y, '#4285F4', 18, 200);
+                addFloatText(p.x, p.y - 18, 'SHIELD SAVED!', '#8ab4f8');
+                emitEvent('shieldBreak', p.x, p.y);
+                hazards.splice(i, 1);
+              } else {
+                p.alive = false;
+                p.reviveProgress = 0;
+                Sound.hit();
+                shakeTimer = 0.32;
+                spawnParticles(p.x, p.y, '#EA4335', 28, 240);
+                const downMsg = gameMode !== '1p' ? `${p.label} DOWN!` : '';
+                if (downMsg) addFloatText(p.x, p.y - 18, downMsg, '#f28b82');
+                emitEvent('hit', p.x, p.y, '#EA4335', downMsg);
+                hazards.splice(i, 1);
+
+                if (players.every(pl => !pl.alive)) {
+                  triggerGameOver();
+                }
+              }
+              break;
+            }
+          }
+        }
+
+        if (gameMode === 'online' && Net.role === 'host' && state === 'playing') {
+          Net.syncTimer += dt;
+          if (Net.syncTimer >= 0.032) {
+            Net.syncTimer = 0;
+            sendNet({
+              type: 'state',
+              ts: Math.round(teamScore),
+              tc: teamCoins,
+              tg: teamGems,
+              players: players.map(p => ({
+                x: Math.round(p.x * 10) / 10,
+                y: Math.round(p.y * 10) / 10,
+                vx: Math.round(p.vx),
+                vy: Math.round(p.vy),
+                sh: p.shield ? 1 : 0,
+                mg: Number(p.magnetTimer.toFixed(1)),
+                iv: Number(p.invulnTimer.toFixed(2)),
+                al: p.alive ? 1 : 0,
+                rv: Number(p.reviveProgress.toFixed(2)),
+                sc: Math.round(p.score),
+                cn: p.coins,
+                gm: p.gems,
+                ag: Number(p.aegisTimer.toFixed(1)),
+                sw: Number(p.shockwaveTimer.toFixed(1)),
+                sk: p.skinId
+              })),
+              coins: coins.map(c => ({
+                uid: c.uid,
+                x: Math.round(c.x * 10) / 10,
+                y: Math.round(c.y * 10) / 10,
+                g: c.isGem ? 1 : 0,
+                lf: Number(c.life.toFixed(1))
+              })),
+              hazards: hazards.map(h => ({
+                uid: h.uid,
+                x: Math.round(h.x * 10) / 10,
+                y: Math.round(h.y * 10) / 10,
+                b: h.bouncer ? 1 : 0,
+                rot: Number(h.rot.toFixed(2))
+              })),
+              powerups: powerups.map(pu => ({
+                uid: pu.uid,
+                x: Math.round(pu.x),
+                y: Math.round(pu.y),
+                t: pu.type === 'magnet' ? 'm' : 's'
+              })),
+              ev: Net.pendingEvents.splice(0)
+            });
+          }
+        }
+
+        updateParticles(dt);
+        updateHUD();
+      }
+
+      function updateParticles(dt) {
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.94;
+          p.vy *= 0.94;
+          p.life -= dt;
+          if (p.life <= 0) particles.splice(i, 1);
+        }
+        for (let i = shockwaves.length - 1; i >= 0; i--) {
+          const sw = shockwaves[i];
+          sw.life -= dt;
+          const prog = 1 - Math.max(0, sw.life / sw.maxLife);
+          sw.r = 12 + (sw.maxR - 12) * prog;
+          if (sw.life <= 0) shockwaves.splice(i, 1);
+        }
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          const ft = floatingTexts[i];
+          ft.y -= 36 * dt;
+          ft.life -= dt;
+          if (ft.life <= 0) floatingTexts.splice(i, 1);
+        }
+      }
+
+      function draw() {
+        ctx.save();
+        // Material Dark backdrop
+        ctx.fillStyle = '#17181b';
+        ctx.fillRect(0, 0, W, H);
+
+        if (shakeTimer > 0) {
+          const mag = shakeTimer * 18;
+          ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+        }
+
+        const { aw, ah, scale, ox, oy } = getArenaTransform();
+        ctx.translate(ox, oy);
+        ctx.scale(scale, scale);
+
+        // Google Dark Arena Surface
+        ctx.fillStyle = '#202124';
+        ctx.fillRect(0, 0, aw, ah);
+
+        if (gameMode === 'online') {
+          ctx.strokeStyle = 'rgba(66, 133, 244, 0.45)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(1, 1, aw - 2, ah - 2);
+        }
+
+        // Subtle Material Grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        ctx.lineWidth = 1;
+        const gridSize = 44;
+        ctx.beginPath();
+        for (let gx = 0; gx < aw; gx += gridSize) {
+          ctx.moveTo(gx, 0);
+          ctx.lineTo(gx, ah);
+        }
+        for (let gy = 0; gy < ah; gy += gridSize) {
+          ctx.moveTo(0, gy);
+          ctx.lineTo(aw, gy);
+        }
+        ctx.stroke();
+
+        // Subtle Google-tinted Ambient Dots
+        bgStars.forEach(st => {
+          ctx.fillStyle = st.color;
+          ctx.beginPath();
+          ctx.arc(st.x * aw, st.y * ah, st.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Draw Shockwaves
+        shockwaves.forEach(sw => {
+          const a = Math.max(0, sw.life / sw.maxLife);
+          ctx.save();
+          ctx.globalAlpha = a * 0.75;
+          ctx.strokeStyle = sw.color;
+          ctx.lineWidth = 4 * a + 1;
+          ctx.beginPath();
+          ctx.arc(sw.x, sw.y, sw.r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        });
+
+        // Draw Trail
+        trail.forEach(tr => {
+          const a = tr.life / tr.maxLife;
+          ctx.globalAlpha = a * 0.5;
+          ctx.fillStyle = tr.color;
+          ctx.beginPath();
+          ctx.arc(tr.x, tr.y, tr.r * a, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+
+        // Draw Coins & Gems
+        coins.forEach(c => {
+          const bob = Math.sin(globalTime * 5 + c.bobOffset) * 2.5;
+          const cy = c.y + bob;
+          const blink = c.life < 2.2 && Math.floor(c.life * 8) % 2 === 0;
+          if (blink) return;
+
+          if (c.isGem) {
+            ctx.save();
+            ctx.translate(c.x, cy);
+            ctx.shadowColor = '#4285F4';
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = '#4285F4';
+            ctx.beginPath();
+            ctx.moveTo(0, -c.r);
+            ctx.lineTo(c.r * 0.85, 0);
+            ctx.lineTo(0, c.r);
+            ctx.lineTo(-c.r * 0.85, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#d2e3fc';
+            ctx.beginPath();
+            ctx.moveTo(0, -c.r * 0.55);
+            ctx.lineTo(c.r * 0.45, 0);
+            ctx.lineTo(0, c.r * 0.55);
+            ctx.lineTo(-c.r * 0.45, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          } else {
+            ctx.save();
+            ctx.shadowColor = '#FBBC05';
+            ctx.shadowBlur = 10;
+            const grad = ctx.createRadialGradient(c.x - 3, cy - 3, 1, c.x, cy, c.r);
+            grad.addColorStop(0, '#fff7cc');
+            grad.addColorStop(0.55, '#FBBC05');
+            grad.addColorStop(1, '#e37400');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(c.x, cy, c.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
+
+        // Draw Power-ups
+        powerups.forEach(p => {
+          const py = p.y + Math.sin(globalTime * 4 + p.bob) * 3;
+          ctx.save();
+          const col = p.type === 'magnet' ? '#f472b6' : '#4285F4';
+          ctx.shadowColor = col;
+          ctx.shadowBlur = 14;
+          ctx.fillStyle = 'rgba(32, 33, 36, 0.92)';
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(p.x, py, p.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          ctx.font = '14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(p.type === 'magnet' ? '🧲' : '🛡️', p.x, py + 1);
+          ctx.restore();
+        });
+
+        // Draw Hazards
+        hazards.forEach(h => {
+          ctx.save();
+          ctx.translate(h.x, h.y);
+          ctx.rotate(h.rot);
+          ctx.shadowColor = h.bouncer ? '#FBBC05' : '#EA4335';
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = h.bouncer ? '#fa7b17' : '#EA4335';
+
+          const spikes = 6;
+          ctx.beginPath();
+          for (let i = 0; i < spikes * 2; i++) {
+            const rad = i % 2 === 0 ? h.r + 3 : h.r * 0.6;
+            const ang = (i * Math.PI) / spikes;
+            const sx = Math.cos(ang) * rad;
+            const sy = Math.sin(ang) * rad;
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = '#3c0907';
+          ctx.beginPath();
+          ctx.arc(0, 0, h.r * 0.38, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
+
+        // Draw Players
+        if (state === 'menu') {
+          const skin = getSkinById(saveData.equipped);
+          skin.draw(ctx, aw / 2, ah / 2, 16, globalTime, 0, 0);
+        } else if (state === 'playing') {
+          const is2P = gameMode !== '1p';
+          const isCoop = (gameMode === 'coop') || (gameMode === 'online' && onlineSubMode === 'coop');
+
+          players.forEach(p => {
+            if (!p.alive) {
+              if (isCoop) {
+                ctx.save();
+                const pulse = 1 + Math.sin(globalTime * 6) * 0.08;
+                ctx.strokeStyle = p.ringColor;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, (p.r + 8) * pulse, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                if (p.reviveProgress > 0) {
+                  ctx.strokeStyle = '#34A853';
+                  ctx.lineWidth = 4;
+                  ctx.beginPath();
+                  ctx.arc(p.x, p.y, p.r + 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p.reviveProgress);
+                  ctx.stroke();
+                }
+
+                ctx.font = '700 11px "Plus Jakarta Sans", system-ui, sans-serif';
+                ctx.fillStyle = '#e8eaed';
+                ctx.textAlign = 'center';
+                ctx.fillText(`REVIVE ${p.label}`, p.x, p.y - p.r - 14);
+                ctx.restore();
+              }
+              return;
+            }
+
+            const ab = getSkinById(p.skinId).ability?.id;
+
+            // Subtle Gravity Aura ring for Gravity Weaver / Sovereign
+            if (ab === 'magnet' || ab === 'sovereign') {
+              ctx.strokeStyle = ab === 'magnet'
+                ? 'rgba(232, 121, 249, 0.16)'
+                : 'rgba(250, 204, 21, 0.13)';
+              ctx.lineWidth = 1.4;
+              ctx.setLineDash([5, 7]);
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, ab === 'magnet' ? 135 : 115, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+
+            if (p.magnetTimer > 0) {
+              ctx.strokeStyle = `rgba(244, 114, 182, ${0.18 + Math.sin(globalTime * 6) * 0.08})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.r + 18 + Math.sin(globalTime * 8) * 3, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+
+            if (p.shield) {
+              ctx.fillStyle = 'rgba(66, 133, 244, 0.16)';
+              ctx.strokeStyle = '#4285F4';
+              ctx.lineWidth = 2.2;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.r + 7, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+            }
+
+            if (is2P) {
+              ctx.strokeStyle = p.ringColor;
+              ctx.lineWidth = 1.6;
+              ctx.globalAlpha = 0.6;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.r + 4, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.globalAlpha = 1;
+            }
+
+            const hideForBlink = p.invulnTimer > 0 && Math.floor(p.invulnTimer * 16) % 2 === 0;
+            if (!hideForBlink) {
+              const skin = getSkinById(p.skinId);
+              skin.draw(ctx, p.x, p.y, p.r, globalTime, p.vx, p.vy);
+            }
+
+            if (is2P) {
+              ctx.font = '700 11px "Plus Jakarta Sans", system-ui, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillStyle = p.ringColor;
+              const isYou = gameMode === 'online' && ((Net.role === 'host' && p.id === 1) || (Net.role === 'guest' && p.id === 2));
+              ctx.fillText(isYou ? `${p.label} (YOU)` : p.label, p.x, p.y + p.r + 16);
+            }
+          });
+        }
+
+        // Particles
+        particles.forEach(p => {
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+
+        // Floating Texts
+        ctx.font = '700 14px "Plus Jakarta Sans", system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        floatingTexts.forEach(ft => {
+          ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife);
+          ctx.fillStyle = ft.color;
+          ctx.fillText(ft.text, ft.x, ft.y);
+        });
+        ctx.globalAlpha = 1;
+
+        ctx.restore();
+      }
+
+      function loop(now) {
+        const dt = Math.min(0.05, (now - lastTime) / 1000);
+        lastTime = now;
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      // Initialize
+      loadSave();
+      updateOnlineSubmodeUI();
+      updateModeUI();
+      updateHUD();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
